@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/memory/ref_counted_memory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui.h"
