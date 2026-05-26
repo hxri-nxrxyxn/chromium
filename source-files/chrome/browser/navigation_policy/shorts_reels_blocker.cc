@@ -192,22 +192,11 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
       R"BLOCK(</div>
       </div>
       <div class="nav-wrapper">
-        <button class="secondary-button" id="back-button">Back to previous page</button>
+        <a class="secondary-button" href="javascript:history.go(-1)">Back to previous page</a>
       </div>
     </div>
   </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-  document.getElementById('back-button').addEventListener('click', function() {
-    try {
-      history.go(-1);
-    } catch(e) {
-      location.href = 'about:blank';
-    }
-  });
-});
-</script>
 </body>
 </html>)BLOCK"
   });
