@@ -1,0 +1,31 @@
+# Add these sources to the existing chrome/browser/BUILD.gn target,
+# or include this file via a source_set if you prefer to keep the
+# navigation_policy directory self-contained.
+#
+# In chrome/browser/BUILD.gn, find the main "browser" source_set and add:
+#
+#   sources += [
+#     "navigation_policy/shorts_reels_blocker.cc",
+#     "navigation_policy/shorts_reels_blocker.h",
+#   ]
+#
+#   deps += [
+#     "//third_party/re2",
+#   ]
+#
+# Or, if you want a standalone source_set for this directory:
+
+source_set("shorts_reels_blocker") {
+  sources = [
+    "shorts_reels_blocker.cc",
+    "shorts_reels_blocker.h",
+  ]
+
+  deps = [
+    "//base",
+    "//content/public/browser",
+    "//third_party/re2",
+    "//ui/base",
+    "//url",
+  ]
+}
