@@ -45,9 +45,15 @@ class ShortsReelsBlockerThrottle final : public content::NavigationThrottle {
   // Returns BLOCK_REQUEST for blocked URLs, PROCEED otherwise.
   [[nodiscard]] static ThrottleCheckResult CheckURL(const GURL& url);
 
+  // Returns BLOCK_REQUEST with the block page HTML as error page content.
+  // Increments the block counter. This is the primary blocking method for
+  // navigations intercepted by the throttle.
+  [[nodiscard]] static ThrottleCheckResult BlockRequestWithPage(
+      const GURL& url);
+
   // Redirects |web_contents| to chrome://distraction-blocked.
-  // Increments the global block counter beforehand so the WebUI shows the
-  // right count on load.
+  // Uses should_replace_current_entry=true since this is called after the
+  // blocked URL has already been committed (SPA pushState navigations).
   static void NavigateToBlockPage(content::WebContents* web_contents);
 
   // Returns the total number of blocks this session.
