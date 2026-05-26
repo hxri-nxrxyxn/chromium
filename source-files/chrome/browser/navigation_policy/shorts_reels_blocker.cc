@@ -192,11 +192,18 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
       R"BLOCK(</div>
       </div>
       <div class="nav-wrapper">
-        <button class="secondary-button" onclick="window.history.back()">Back to previous page</button>
+        <button class="secondary-button" id="back-button">Back to previous page</button>
       </div>
     </div>
   </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('back-button').addEventListener('click', function() {
+    history.back();
+  });
+});
+</script>
 </body>
 </html>)BLOCK"
   });
