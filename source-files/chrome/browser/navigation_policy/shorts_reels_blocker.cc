@@ -152,9 +152,7 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
 .icon-blocked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='32' fill='%23ea4335'/%3E%3Crect x='22' y='32' width='28' height='8' rx='4' fill='%23fff'/%3E%3C/svg%3E")}
 .error-code{color:var(--error-code-color);font-size:.8em;margin-top:12px;text-transform:lowercase}
 .nav-wrapper{margin-top:51px}
-.nav-wrapper::after{clear:both;content:'';display:table;width:100%}
-.secondary-button{background:var(--secondary-button-fill-color);border:1px solid var(--secondary-button-border-color);border-radius:20px;box-sizing:border-box;color:var(--secondary-button-text-color);cursor:pointer;display:inline-block;font-size:.875em;padding:8px 16px;text-decoration:none;user-select:none}
-.secondary-button:hover{background:var(--secondary-button-hover-fill-color);border-color:var(--secondary-button-hover-border-color)}
+.back-hint{color:var(--text-color);font-size:.85em;margin:0;opacity:.7}
 .interstitial-wrapper{box-sizing:border-box;font-size:1em;line-height:1.6em;margin:14vh auto 0;max-width:600px;width:100%;padding:0 24px}
 #main-content{padding-bottom:40px}
 @media(prefers-color-scheme:dark){
@@ -192,7 +190,7 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
       R"BLOCK(</div>
       </div>
       <div class="nav-wrapper">
-        <a class="secondary-button" href="javascript:history.go(-1)">Back to previous page</a>
+        <p class="back-hint">Press the back button to return</p>
       </div>
     </div>
   </div>
