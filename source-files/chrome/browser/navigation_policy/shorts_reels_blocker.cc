@@ -200,7 +200,11 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   document.getElementById('back-button').addEventListener('click', function() {
-    history.back();
+    try {
+      history.go(-1);
+    } catch(e) {
+      location.href = 'about:blank';
+    }
   });
 });
 </script>
