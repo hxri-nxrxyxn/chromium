@@ -46,7 +46,33 @@
 #       web_contents);
 #
 # ─────────────────────────────────────────────────────────────────────────────
-# 3. chrome/browser/BUILD.gn
+# 3. chrome/browser/ui/BUILD.gn
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ADD to the sources list (alphabetically, near webui/crashes/):
+#
+#   "webui/distraction_blocked/distraction_blocked_ui.cc",
+#   "webui/distraction_blocked/distraction_blocked_ui.h",
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 4. chrome/browser/ui/webui/BUILD.gn
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ADD to the "configs" source_set's deps list:
+#
+#   "//chrome/browser/ui/webui/distraction_blocked",
+#
+# ─────────────────────────────────────────────────────────────────────────────
+# 5. chrome/browser/ui/webui/chrome_web_ui_configs.cc
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# ADD to includes (alphabetically):
+#
+#   #include "chrome/browser/ui/webui/distraction_blocked/distraction_blocked_ui.h"
+#
+# ADD inside RegisterChromeWebUIConfigs():
+#
+#   map.AddWebUIConfig(std::make_unique<DistractionBlockedUIConfig>());
 # ─────────────────────────────────────────────────────────────────────────────
 #
 # ADD to deps of the main "browser" target (or whichever target builds the
