@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chromium-android-builder
+    container_name: chromium-android-builder
+    volumes:
+      - ./checkout:/checkout
+      - ./depot_tools:/depot_tools
+    environment:
+      - DEPOT_TOOLS_UPDATE=0
+      - PATH=/depot_tools:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+    working_dir: /checkout/src
+    stdin_open: true
+    tty: true
+    network_mode: host
