@@ -4,11 +4,13 @@
 
 #include "chrome/browser/navigation_policy/shorts_reels_blocker.h"
 
+#include <atomic>
 #include <string_view>
 
 #include "base/memory/ptr_util.h"
 
 #include "base/strings/string_util.h"
+#include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_throttle_registry.h"
@@ -98,6 +100,13 @@ bool MatchesRegexRule(const RegexBlockRule& rule, std::string_view path) {
 }  // namespace
 
 // ---------------------------------------------------------------------------
+// Session-wide block counter (atomic, not persisted across restarts).
+// ---------------------------------------------------------------------------
+namespace {
+std::atomic<int> g_block_count{0};
+}  // namespace
+
+// ---------------------------------------------------------------------------
 // ShortsReelsBlockerThrottle
 // ---------------------------------------------------------------------------
 
@@ -116,12 +125,20 @@ ShortsReelsBlockerThrottle::~ShortsReelsBlockerThrottle() = default;
 
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillStartRequest() {
-  return CheckURL(navigation_handle()->GetURL());
+  if (CheckURL(navigation_handle()->GetURL()).action() == BLOCK_REQUEST) {
+    NavigateToBlockPage(navigation_handle()->GetWebContents());
+    return CANCEL_AND_IGNORE;
+  }
+  return PROCEED;
 }
 
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillRedirectRequest() {
-  return CheckURL(navigation_handle()->GetURL());
+  if (CheckURL(navigation_handle()->GetURL()).action() == BLOCK_REQUEST) {
+    NavigateToBlockPage(navigation_handle()->GetWebContents());
+    return CANCEL_AND_IGNORE;
+  }
+  return PROCEED;
 }
 
 const char* ShortsReelsBlockerThrottle::GetNameForLogging() {
@@ -166,6 +183,21 @@ bool ShortsReelsBlockerThrottle::PathMatchesPrefix(std::string_view path,
   return path.size() == prefix.size() || path[prefix.size()] == '/';
 }
 
+// static
+void ShortsReelsBlockerThrottle::NavigateToBlockPage(
+    content::WebContents* web_contents) {
+  g_block_count.fetch_add(1, std::memory_order_relaxed);
+  content::NavigationController::LoadURLParams params(
+      GURL("chrome://distraction-blocked"));
+  params.transition_type = ui::PAGE_TRANSITION_AUTO_TOPLEVEL;
+  web_contents->GetController().LoadURLWithParams(params);
+}
+
+// static
+int ShortsReelsBlockerThrottle::GetBlockCount() {
+  return g_block_count.load(std::memory_order_relaxed);
+}
+
 // ---------------------------------------------------------------------------
 // ShortsReelsBlockerTabHelper
 // ---------------------------------------------------------------------------
@@ -200,12 +232,5 @@ void ShortsReelsBlockerTabHelper::MaybeBlockURL(const GURL& url) {
     return;
   }
 
-  content::NavigationController& controller = web_contents()->GetController();
-  if (controller.CanGoBack()) {
-    controller.GoBack();
-  } else {
-    controller.LoadURL(GURL("about:blank"), content::Referrer(),
-                       ui::PAGE_TRANSITION_AUTO_TOPLEVEL,
-                       /*extra_headers=*/{});
-  }
+  ShortsReelsBlockerThrottle::NavigateToBlockPage(web_contents());
 }

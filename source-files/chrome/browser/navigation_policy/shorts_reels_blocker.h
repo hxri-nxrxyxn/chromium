@@ -45,6 +45,14 @@ class ShortsReelsBlockerThrottle final : public content::NavigationThrottle {
   // Returns BLOCK_REQUEST for blocked URLs, PROCEED otherwise.
   [[nodiscard]] static ThrottleCheckResult CheckURL(const GURL& url);
 
+  // Redirects |web_contents| to chrome://distraction-blocked.
+  // Increments the global block counter beforehand so the WebUI shows the
+  // right count on load.
+  static void NavigateToBlockPage(content::WebContents* web_contents);
+
+  // Returns the total number of blocks this session.
+  static int GetBlockCount();
+
   // Returns true if |path| (caller must lower-case first) begins with
   // |prefix| at a path-component boundary — so "/shortsfilm" does NOT match
   // prefix "/shorts", but "/shorts" and "/shorts/abc" do.

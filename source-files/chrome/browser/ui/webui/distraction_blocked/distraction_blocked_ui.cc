@@ -7,6 +7,8 @@
 #include <string>
 
 #include "base/memory/ref_counted_memory.h"
+#include "base/strings/stringprintf.h"
+#include "chrome/browser/navigation_policy/shorts_reels_blocker.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui.h"
@@ -106,8 +108,12 @@ void CreateAndAddDistractionBlockedHTMLSource(Profile* profile) {
   content::WebUIDataSource* source = content::WebUIDataSource::CreateAndAdd(
       profile, chrome::kChromeUIDistractionBlockedHost);
 
-  // Add block counter from profile preferences (placeholder for now).
-  source->AddString("distractionBlockCountText", "blocked 14 times today");
+  // Build the block counter string from the session-wide atomic counter.
+  int count = ShortsReelsBlockerThrottle::GetBlockCount();
+  std::string counter_text =
+      base::StringPrintf("blocked %d time%s today", count,
+                         count == 1 ? "" : "s");
+  source->AddString("distractionBlockCountText", counter_text);
 
   source->SetRequestFilter(
       base::BindRepeating([](const std::string& path) {
