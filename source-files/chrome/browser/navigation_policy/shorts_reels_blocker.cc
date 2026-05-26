@@ -151,8 +151,6 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
 .icon{background-repeat:no-repeat;background-size:100%;display:inline-block;height:72px;margin:0 0 40px;width:72px;-webkit-user-select:none}
 .icon-blocked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='32' fill='%23ea4335'/%3E%3Crect x='22' y='32' width='28' height='8' rx='4' fill='%23fff'/%3E%3C/svg%3E")}
 .error-code{color:var(--error-code-color);font-size:.8em;margin-top:12px;text-transform:lowercase}
-.nav-wrapper{margin-top:51px}
-.back-hint{color:var(--text-color);font-size:.85em;margin:0;opacity:.7}
 .interstitial-wrapper{box-sizing:border-box;font-size:1em;line-height:1.6em;margin:14vh auto 0;max-width:600px;width:100%;padding:0 24px}
 #main-content{padding-bottom:40px}
 @media(prefers-color-scheme:dark){
@@ -188,9 +186,6 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
         <div class="error-code">)BLOCK",
       counter_text,
       R"BLOCK(</div>
-      </div>
-      <div class="nav-wrapper">
-        <p class="back-hint">Press the back button to return</p>
       </div>
     </div>
   </div>
