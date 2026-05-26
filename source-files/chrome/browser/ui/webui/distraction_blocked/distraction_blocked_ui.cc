@@ -11,9 +11,11 @@
 #include "base/strings/stringprintf.h"
 #include "chrome/browser/navigation_policy/shorts_reels_blocker.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
+#include "url/gurl.h"
 
 namespace {
 
@@ -66,6 +68,10 @@ p{color:var(--text-color);font-size:1.1em;margin-top:8px;line-height:1.55}
 .icon{background-repeat:no-repeat;background-size:100%;display:inline-block;height:72px;margin:0 0 40px;width:72px;-webkit-user-select:none}
 .icon-blocked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='32' fill='%23ea4335'/%3E%3Crect x='22' y='32' width='28' height='8' rx='4' fill='%23fff'/%3E%3C/svg%3E")}
 .error-code{color:var(--error-code-color);font-size:.8em;margin-top:12px;text-transform:lowercase}
+.nav-wrapper{margin-top:51px}
+.nav-wrapper::after{clear:both;content:'';display:table;width:100%}
+.secondary-button{background:var(--secondary-button-fill-color,#fff);border:1px solid var(--secondary-button-border-color,var(--google-gray-500));border-radius:20px;box-sizing:border-box;color:var(--secondary-button-text-color,var(--google-gray-700));cursor:pointer;display:inline-block;font-size:.875em;padding:8px 16px;text-decoration:none;user-select:none}
+.secondary-button:hover{background:var(--secondary-button-hover-fill-color,var(--google-gray-50));border-color:var(--secondary-button-hover-border-color,var(--google-gray-600))}
 .interstitial-wrapper{box-sizing:border-box;font-size:1em;line-height:1.6em;margin:14vh auto 0;max-width:600px;width:100%;padding:0 24px}
 #main-content{padding-bottom:40px}
 @media(prefers-color-scheme:dark){
@@ -77,6 +83,8 @@ p{color:var(--text-color);font-size:1.1em;margin-top:8px;line-height:1.55}
     --text-color:var(--google-gray-500)
   }
   .icon-blocked{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='72' height='72' viewBox='0 0 72 72'%3E%3Ccircle cx='36' cy='36' r='32' fill='%23f28b82'/%3E%3Crect x='22' y='32' width='28' height='8' rx='4' fill='%23202124'/%3E%3C/svg%3E")}
+  .secondary-button{background:var(--google-gray-900);border-color:var(--google-gray-700);color:var(--google-blue-300)}
+  .secondary-button:hover{background:rgb(48,51,57)}
 }
 @media(max-width:700px){.interstitial-wrapper{padding:0 10%}}
 @media(max-width:420px){
@@ -98,6 +106,9 @@ p{color:var(--text-color);font-size:1.1em;margin-top:8px;line-height:1.55}
         <div class="error-code">)HTML",
       counter_text,
       R"HTML(</div>
+      </div>
+      <div class="nav-wrapper">
+        <button class="secondary-button" onclick="window.history.back()">Back to previous page</button>
       </div>
     </div>
   </div>

@@ -7,10 +7,12 @@
 #include <atomic>
 #include <string_view>
 
+#include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 
 #include "base/strings/string_util.h"
 #include "chrome/common/webui_url_constants.h"
+#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/navigation_throttle_registry.h"
@@ -126,7 +128,10 @@ ShortsReelsBlockerThrottle::~ShortsReelsBlockerThrottle() = default;
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillStartRequest() {
   if (CheckURL(navigation_handle()->GetURL()).action() == BLOCK_REQUEST) {
-    NavigateToBlockPage(navigation_handle()->GetWebContents());
+    content::WebContents* wc = navigation_handle()->GetWebContents();
+    content::GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE,
+        base::BindOnce(&ShortsReelsBlockerThrottle::NavigateToBlockPage, wc));
     return CANCEL_AND_IGNORE;
   }
   return PROCEED;
@@ -135,7 +140,10 @@ ShortsReelsBlockerThrottle::WillStartRequest() {
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillRedirectRequest() {
   if (CheckURL(navigation_handle()->GetURL()).action() == BLOCK_REQUEST) {
-    NavigateToBlockPage(navigation_handle()->GetWebContents());
+    content::WebContents* wc = navigation_handle()->GetWebContents();
+    content::GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE,
+        base::BindOnce(&ShortsReelsBlockerThrottle::NavigateToBlockPage, wc));
     return CANCEL_AND_IGNORE;
   }
   return PROCEED;
