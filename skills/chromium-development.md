@@ -1127,24 +1127,19 @@ Docker containers run as root. All `.o` and `.a` files in `out/Default/` are own
 
 **Root cause:** The `.o` file was created by a previous Docker run (as root) and has a later timestamp than your host-side edit. Since `ninja` runs as root in the container and the `.o` is newer, it thinks nothing changed.
 
-**Fix — delete stale `.o` files from inside the container:**
+**Fix — delete ONLY the SPECIFIC `.o` files for the files you changed:**
 ```bash
 docker run --rm -v ./checkout:/checkout alpine:latest sh -c "
   rm -f /checkout/src/out/Default/obj/chrome/browser/navigation_policy/*.o
   rm -f /checkout/src/out/Default/obj/chrome/browser/ui/ui/distraction_blocked_ui.o
 "
 ```
-Or nuke all `.o`/`.a` files (ninja rebuilds from scratch):
-```bash
-docker run --rm -v ./checkout:/checkout alpine:latest sh -c "
-  find /checkout/src/out/Default -name '*.o' -delete
-  find /checkout/src/out/Default -name '*.a' -delete
-"
-```
+
+**⚠️⚠️⚠️ NEVER delete ALL `.o` files.** Doing so triggers a FULL rebuild of all ~50,000 targets, taking **6-10+ hours** on a mid-range machine. This is the single most destructive mistake in Chromium development — always delete only the specific `.o` files corresponding to the modified source files. If you need to find the right `.o` path, run `write_file` to create the modified file, then `docker compose run builder ninja -t commands modified_file.cc` to see exactly which `.o` it compiles to, or just delete the whole subdirectory tree under `obj/chrome/browser/navigation_policy/`.
 
 **To verify the rebuild is real:** Run `strings` on the output `libchrome.so` and grep for old strings BEFORE and AFTER the fix. Zero matches = clean.
 
-**Prevention:** After `cp` or `touch` on host source files, always run `docker compose run --rm ... builder ninja ...` and check the first output line. If it says `ninja: no work to do` when you know you changed something, delete stale `.o` files and retry.
+**Prevention:** After `cp` or `touch` on host source files, always run `docker compose run --rm ... builder ninja ...` and check the first output line. If it says `ninja: no work to do` when you know you changed something, delete the specific stale `.o` files and retry.
 
 **⚠️ HTML duplicated in TWO source files**
 
@@ -1440,19 +1435,41 @@ docker compose run --rm builder ninja -j3 -C out/Default chrome_public_apk
 - `-j4` reached ~45K `.o` files then silently OOM'd at the LTO link stage (cgroup OOM-kill, no host-level dmesg message)
 - `-j3` completed the same remaining ~14K targets successfully
 - Use `-j3` as the default on any machine with <20GB RAM
-
 **⚠️ Avoid duplicate container instances:**
-When restarting via `terminal(background=true)`, `docker compose run` can spawn **two containers** for the same build if the first isn't fully killed. Two ninja instances writing to the same `out/Default/` directory will corrupt the build.
 
-**Fix:** Always kill any existing chromium containers first, and use `--name` to prevent duplicates:
+When restarting via `terminal(background=true, notify_on_complete=true)`, `docker compose run` can spawn **two containers** for the same build if the first isn't fully killed. Two ninja instances writing to the same `out/Default/` directory will corrupt the build.
+
+**Fix:** Always kill any existing chromium containers FIRST, and verify with `docker ps` before starting:
+
 ```bash
-# Before starting a new build
+# Before starting a new build — kill ALL chromium containers
 docker kill $(docker ps --filter name=chromium --format '{{.ID}}') 2>/dev/null
-
-# Use --name for single-instance guarantee
-docker compose run --rm --name chromium-builder \
-  builder ninja -j3 -C out/Default chrome_public_apk
+docker rm $(docker ps -a --filter name=chromium --format '{{.ID}}') 2>/dev/null
 ```
+
+**⚠️ `docker compose run --name` fails silently on stale containers.**
+
+If a previous build exited mid-way (OOM, timeout, interruption), the `--name chromium-builder` container may still exist in `docker ps -a` even though `docker ps` doesn't show it. The next `docker compose run --name chromium-builder --rm` **will fail** with:
+
+```
+Error response from daemon: Conflict. The container name "/chromium-builder" is
+already in use by container "...". You have to remove (or rename) that container
+to be able to reuse that name.
+```
+
+This error is **not shown in the build log** because `terminal(background=true, ...)` truncates output at the last 1978 chars, and the `docker compose run` actually never starts — the earlier cleanup commands (echo, kill, rm) succeed and produce the exit code seen by the process monitor.
+
+**Fix — always run cleanup BEFORE `docker compose run`:**
+
+```bash
+# Single-line cleanup that handles all cases:
+docker rm -f chromium-builder 2>/dev/null
+
+# Or broader sweep for any chromium-named container:
+docker kill chromium-builder 2>/dev/null; docker rm chromium-builder 2>/dev/null
+```
+
+**Verification:** After cleanup, `docker ps --filter name=chromium --format '{{.Names}}'` should return nothing. Then start the build.
 
 ### Logging for long-running tasks
 - Source: ~15-30GB
@@ -1462,13 +1479,28 @@ docker compose run --rm --name chromium-builder \
 
 ### Incremental builds
 After the first build, small changes rebuild in minutes. Use the container's cached build artifacts.
-
 ### Reconfiguring
+
 To build for x86 (emulator) instead of arm64:
 
 ```bash
 make reconfigure ARGS='target_os="android" target_cpu="x86" symbol_level=1 blink_symbol_level=0 v8_symbol_level=0 is_debug=false treat_warnings_as_errors=false'
 ```
+
+## Platform awareness when patching build flags
+
+Before setting or modifying a build flag (e.g. `enable_dice_support`), **verify the flag is relevant to the target platform**. Many flags are desktop-only:
+
+- DICE (cross-device sign-in) is desktop-only — Android uses `AccountManager`. The GN default is already `false` for Android.
+- Chrome sign-in dialogs (FRE, History Sync, promos) are Android-specific, controlled by Java-side code, not build flags.
+
+**How to check:** Search for the flag in source:
+```bash
+grep -rl "ENABLE_DICE_SUPPORT" src/ --include="*.cc" --include="*.h" | head -10
+# If all results are in desktop-specific dirs, flag is irrelevant
+```
+
+Focus patches on the code paths that actually run on Android — `chrome/android/`, `chrome/browser/ui/android/`, `components/signin/internal/identity_manager/`.
 
 ## Cleanup
 
