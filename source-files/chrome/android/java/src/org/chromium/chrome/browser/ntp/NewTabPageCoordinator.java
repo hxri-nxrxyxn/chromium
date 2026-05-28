@@ -492,27 +492,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
     }
 
     private void initializeComposeplate() {
-        if (mIsComposeplateViewInitialized) return;
-
-        mIsComposeplateViewInitialized = true;
-
-        boolean shouldApplyWhiteBackgroundOnSearchBox =
-                NtpCustomizationUtils.shouldApplyWhiteBackgroundOnSearchBox();
-
-        ViewStub composeplateViewStub = mNewTabPageLayout.findViewById(R.id.composeplate_view_stub);
-        ViewGroup composeplateView = (ViewGroup) composeplateViewStub.inflate();
-        mComposeplateCoordinator = new ComposeplateCoordinator(composeplateView, mProfile);
-        mComposeplateCoordinator.setIncognitoClickListener(this::onIncognitoButtonClicked);
-        // Don't log click metrics in this listener, since the mComposeplateCoordinator will
-        // log.
-        mComposeplateCoordinator.setComposeplateButtonClickListener(
-                this::onComposeplateButtonClicked);
-
-        if (shouldApplyWhiteBackgroundOnSearchBox) {
-            // It is safe to call mComposeplateCoordinator.applyWhiteBackground() again since it is
-            // no-op if the white background has been applied.
-            mComposeplateCoordinator.applyWhiteBackground(/* apply= */ true);
-        }
+        // SKIPPED: Composeplate removed from NTP
     }
 
     private void onComposeplateButtonClicked(View view) {
@@ -608,40 +588,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             TileGroup.Delegate tileGroupDelegate,
             TouchEnabledDelegate touchEnabledDelegate) {
-        View mvTilesContainerLayout = mNewTabPageLayout.findViewById(R.id.mv_tiles_container);
-        assert mvTilesContainerLayout != null;
-
-        mMostVisitedTilesCoordinator =
-                new MostVisitedTilesCoordinator(
-                        mActivity,
-                        activityLifecycleDispatcher,
-                        mvTilesContainerLayout,
-                        () -> mSnapshotTileGridChanged = true,
-                        () -> {
-                            if (mUrlFocusChangePercent == 1f) mTileCountChanged = true;
-                        });
-
-        mMostVisitedTilesCoordinator.initWithNative(
-                profile, mManager, tileGroupDelegate, touchEnabledDelegate);
-        mMostVisitedTilesCoordinator.updateMvtVisibility();
+        // SKIPPED: Most Visited Tiles removed from NTP
     }
 
     private void initializeSigninPromoCoordinator() {
-        ViewStub signinPromoViewContainerStub =
-                mNewTabPageLayout.findViewById(R.id.signin_promo_view_container_stub);
-        mSigninPromoCoordinator =
-                new NtpSigninPromoCoordinator(
-                        mWindowAndroid,
-                        mActivity,
-                        mProfile,
-                        mActivityResultTracker,
-                        SigninAndHistorySyncActivityLauncherImpl.get(),
-                        mBottomSheetController,
-                        mModalDialogManager,
-                        mSnackbarManager,
-                        DeviceLockActivityLauncherImpl.get(),
-                        signinPromoViewContainerStub,
-                        SetupListModuleUtils::isSetupListActive);
+        // SKIPPED: Sign-in promo removed from NTP
     }
 
     /** Updates the search box when the parent view's scroll position is changed. */
@@ -1108,32 +1059,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
      */
     @EnsuresNonNull({"mHomeModulesContainer", "mHomeModulesCoordinator"})
     private void initializeHomeModulesImpl() {
-        mHomeModulesContainer =
-                (ViewGroup)
-                        ((ViewStub)
-                                        mNewTabPageLayout.findViewById(
-                                                R.id.home_modules_recycler_view_stub))
-                                .inflate();
-        MonotonicObservableSupplier<Profile> profileSupplier =
-                ObservableSuppliers.createMonotonic(mProfile);
-        mHomeModulesCoordinator =
-                new HomeModulesCoordinator(
-                        mActivity,
-                        this,
-                        mNewTabPageLayout,
-                        HomeModulesConfigManager.getInstance(),
-                        profileSupplier,
-                        assumeNonNull(mModuleRegistrySupplier.get()));
-
-        if (SetupListManager.getInstance().isSetupListActive()) {
-            mSetupListObserver =
-                    () -> {
-                        if (mHomeModulesCoordinator != null) {
-                            mHomeModulesCoordinator.refreshModules();
-                        }
-                    };
-            SetupListManager.getInstance().addObserver(mSetupListObserver);
-        }
+        // SKIPPED: Home modules removed from NTP
     }
 
     @VisibleForTesting
