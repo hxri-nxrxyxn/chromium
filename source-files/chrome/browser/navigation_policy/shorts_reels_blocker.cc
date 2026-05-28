@@ -60,6 +60,10 @@ constexpr BlockRule kPrefixBlockRules[] = {
 
     // ── LinkedIn ─────────────────────────────────────────────────────────────
     {"linkedin.com", "/videos/reels"},
+
+    // ── TikTok ───────────────────────────────────────────────────────────────
+    // Block the entire domain — all content, all paths.
+    {"tiktok.com", ""},
 };
 
 // ---------------------------------------------------------------------------
