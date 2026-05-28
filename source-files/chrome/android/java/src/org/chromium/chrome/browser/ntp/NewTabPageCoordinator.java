@@ -365,6 +365,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
         initializeSearchBoxTextView();
 
         // SKIPPED: Composeplate, Home Modules, and Sign-in Promo removed from NTP
+        mCanShowComposeplateButton = false;
 
         // This should be called after both mNtpSearchBox and mComposeplateCoordinator are
         // initialized.
