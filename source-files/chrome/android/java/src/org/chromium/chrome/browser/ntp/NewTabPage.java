@@ -32,6 +32,7 @@ import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
 import org.chromium.base.supplier.NonNullObservableSupplier;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplier;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
@@ -623,7 +624,7 @@ public class NewTabPage
 
             @Override
             public TouchEnabledDelegate getTouchEnabledDelegate() {
-                return (event) -> true;
+                return (enabled) -> {};
             }
 
             @Override
@@ -657,19 +658,10 @@ public class NewTabPage
             @Override
             public void reload() {}
 
-            NonNullObservableSupplier<Integer> mRestoringState =
-                    new NonNullObservableSupplier<Integer>() {
-                @Override
-                public Integer addObserver(Callback<Integer> obs) { return null; }
-                @Override
-                public void removeObserver(Callback<Integer> obs) {}
-                @Override
-                public Integer get() { return FeedSurfaceProvider.RestoringState.NO_STATE_TO_RESTORE; }
-            };
-
             @Override
             public NonNullObservableSupplier<Integer> getRestoringStateSupplier() {
-                return mRestoringState;
+                return ObservableSuppliers.createNonNull(
+                        FeedSurfaceProvider.RestoringState.NO_STATE_TO_RESTORE);
             }
 
             @Override
