@@ -356,37 +356,39 @@ public class MainSettings extends ChromeBaseSettingsFragment
         OneshotSupplierImpl<BottomSheetSigninAndHistorySyncCoordinator> signinCoordinatorSupplier =
                 new OneshotSupplierImpl<>();
         SignInPreference signInPreference = findPreference(PREF_SIGN_IN);
-        if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
-            // TODO(crbug.com/495349057): update this to use the new sign-in coordinator API with
-            // suppliers.
-            SupplierUtils.waitForAll(
-                    () -> {
-                        OneshotSupplierImpl<Profile> profileSupplier = new OneshotSupplierImpl<>();
-                        profileSupplier.set(getProfile());
-                        mSigninCoordinator =
-                                SigninAndHistorySyncActivityLauncherImpl.get()
-                                        .createBottomSheetSigninCoordinatorAndObserveAddAccountResult(
-                                                SupplierUtils.asNonNull(mWindowAndroidSupplier)
-                                                        .get(),
-                                                getActivity(),
-                                                mActivityResultTracker,
-                                                signInPreference,
-                                                DeviceLockActivityLauncherImpl.get(),
-                                                profileSupplier,
-                                                SupplierUtils.asNonNull(
-                                                        mBottomSheetControllerSupplier),
-                                                mModalDialogManagerSupplier.asNonNull().get(),
-                                                SupplierUtils.asNonNull(mSnackbarManagerSupplier)
-                                                        .get(),
-                                                SigninAccessPoint.SETTINGS);
-                        signinCoordinatorSupplier.set(mSigninCoordinator);
-                    },
-                    mWindowAndroidSupplier,
-                    mModalDialogManagerSupplier,
-                    mSnackbarManagerSupplier);
+        if (signInPreference != null) {
+            if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
+                // TODO(crbug.com/495349057): update this to use the new sign-in coordinator API with
+                // suppliers.
+                SupplierUtils.waitForAll(
+                        () -> {
+                            OneshotSupplierImpl<Profile> profileSupplier = new OneshotSupplierImpl<>();
+                            profileSupplier.set(getProfile());
+                            mSigninCoordinator =
+                                    SigninAndHistorySyncActivityLauncherImpl.get()
+                                            .createBottomSheetSigninCoordinatorAndObserveAddAccountResult(
+                                                    SupplierUtils.asNonNull(mWindowAndroidSupplier)
+                                                            .get(),
+                                                    getActivity(),
+                                                    mActivityResultTracker,
+                                                    signInPreference,
+                                                    DeviceLockActivityLauncherImpl.get(),
+                                                    profileSupplier,
+                                                    SupplierUtils.asNonNull(
+                                                            mBottomSheetControllerSupplier),
+                                                    mModalDialogManagerSupplier.asNonNull().get(),
+                                                    SupplierUtils.asNonNull(mSnackbarManagerSupplier)
+                                                            .get(),
+                                                    SigninAccessPoint.SETTINGS);
+                            signinCoordinatorSupplier.set(mSigninCoordinator);
+                        },
+                        mWindowAndroidSupplier,
+                        mModalDialogManagerSupplier,
+                        mSnackbarManagerSupplier);
+            }
+            signInPreference.initialize(
+                    getProfile(), profileDataCache, accountManagerFacade, signinCoordinatorSupplier);
         }
-        signInPreference.initialize(
-                getProfile(), profileDataCache, accountManagerFacade, signinCoordinatorSupplier);
         ChromeBasePreference googleServicePreference = findPreference(PREF_GOOGLE_SERVICES);
         if (googleServicePreference != null) {
             googleServicePreference.setViewId(R.id.account_management_google_services_row);
