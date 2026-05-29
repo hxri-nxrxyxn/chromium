@@ -1487,6 +1487,21 @@ To build for x86 (emulator) instead of arm64:
 make reconfigure ARGS='target_os="android" target_cpu="x86" symbol_level=1 blink_symbol_level=0 v8_symbol_level=0 is_debug=false treat_warnings_as_errors=false'
 ```
 
+## Settings stripping: the addPreferenceIfAbsent trap (v20 → v21 production bug)
+
+When you strip preference keys from `main_preferences.xml`, the Java code references them in two places:
+
+1. **`createPreferences()`** — uses `findPreference(key)` which returns null → just null-guard the result
+2. **`updatePreferences()`** — uses `addPreferenceIfAbsent(key)` which calls `mAllPreferences.get(key)` followed by `assumeNonNull()`
+
+`cachePreferences()` only populates `mAllPreferences` from XML keys. Keys stripped from XML are **never cached**. When `updatePreferences()` calls `addPreferenceIfAbsent(stripped_key)` at runtime, it crashes with NPE — `assumeNonNull(mAllPreferences.get("settings_promo_card"))` explodes.
+
+**The build will NOT catch this** — it compiles fine, crashes only when the user opens Settings.
+
+**Fix (v21):** Remove the entire `addPreferenceIfAbsent` call AND its conditional block from `updatePreferences()`. The key doesn't exist in the pref tree — there's nothing to add, remove, or update. Just delete the code block.
+
+Keys affected in this build: `PREF_SETTINGS_PROMO_CARD`, `PREF_SIGN_IN`, `PREF_GOOGLE_SERVICES`.
+
 ## Platform awareness when patching build flags
 
 Before setting or modifying a build flag (e.g. `enable_dice_support`), **verify the flag is relevant to the target platform**. Many flags are desktop-only:
