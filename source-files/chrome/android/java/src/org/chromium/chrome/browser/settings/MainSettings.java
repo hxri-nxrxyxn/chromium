@@ -531,17 +531,9 @@ public class MainSettings extends ChromeBaseSettingsFragment
     }
 
     private void updatePreferences() {
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_ANDROID2)) {
-            SettingsPromoCardPreference promoCardPreference =
-                    (SettingsPromoCardPreference) addPreferenceIfAbsent(PREF_SETTINGS_PROMO_CARD);
-            promoCardPreference.updatePreferences();
-        }
-
-        if (shouldShowSignInPref(getProfile())) {
-            addPreferenceIfAbsent(PREF_SIGN_IN);
-        } else {
-            removePreferenceIfPresent(PREF_SIGN_IN);
-        }
+        // Promo card and sign-in preferences were removed from XML.
+        // Skip addPreferenceIfAbsent for these — they were never cached
+        // and would NPE inside assumeNonNull(mAllPreferences.get(key)).
 
         updateSearchEnginePreference();
         updateAutofillPreferences();
