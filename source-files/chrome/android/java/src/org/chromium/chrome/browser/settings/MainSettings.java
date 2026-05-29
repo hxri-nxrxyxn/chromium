@@ -349,8 +349,10 @@ public class MainSettings extends ChromeBaseSettingsFragment
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.DEFAULT_BROWSER_PROMO_ANDROID2)) {
             SettingsPromoCardPreference settingsPromoCardPreference =
                     findPreference(PREF_SETTINGS_PROMO_CARD);
-            settingsPromoCardPreference.initialize(
-                    TrackerFactory.getTrackerForProfile(getProfile()));
+            if (settingsPromoCardPreference != null) {
+                settingsPromoCardPreference.initialize(
+                        TrackerFactory.getTrackerForProfile(getProfile()));
+            }
         }
 
         OneshotSupplierImpl<BottomSheetSigninAndHistorySyncCoordinator> signinCoordinatorSupplier =
