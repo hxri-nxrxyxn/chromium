@@ -187,20 +187,7 @@ public class IdentityDiscController
     }
 
     private void calculateButtonData() {
-        if (mProfile == null) {
-            assert !mButtonData.canShow();
-            return;
-        }
-
-        ensureProfileDataCache(mProfile);
-        final @Nullable CoreAccountId accountId =
-                CoreAccountInfo.getIdFrom(getSignedInAccountInfo());
-        final @Nullable DisplayableProfileData profileData =
-                accountId != null ? mProfileDataCache.getById(accountId) : null;
-
-        mButtonData.setButtonSpec(
-                buttonSpecWithDrawableAndDescription(mButtonData.getButtonSpec(), profileData));
-        mButtonData.setCanShow(true);
+        // Identity Disc is always hidden in this fork — no profile data needed.
     }
 
     private ButtonSpec buttonSpecWithDrawableAndDescription(
@@ -424,56 +411,7 @@ public class IdentityDiscController
 
     @VisibleForTesting
     void onClick() {
-        if (mProfile == null) {
-            return;
-        }
-        recordIdentityDiscUsed();
-
-        Profile originalProfile = mProfile.getOriginalProfile();
-        if (getSignedInAccountInfo() == null
-                && UserPrefs.get(originalProfile).getBoolean(Pref.SIGNIN_ALLOWED)) {
-            AccountPickerBottomSheetStrings bottomSheetStrings =
-                    new AccountPickerBottomSheetStrings.Builder(
-                                    mContext.getString(
-                                            R.string.signin_account_picker_bottom_sheet_title))
-                            .setSubtitleString(
-                                    mContext.getString(
-                                            R.string
-                                                    .signin_account_picker_bottom_sheet_benefits_subtitle))
-                            .build();
-            BottomSheetSigninAndHistorySyncConfig config =
-                    new BottomSheetSigninAndHistorySyncConfig.Builder(
-                                    bottomSheetStrings,
-                                    NoAccountSigninMode.BOTTOM_SHEET,
-                                    WithAccountSigninMode.DEFAULT_ACCOUNT_BOTTOM_SHEET,
-                                    HistorySyncConfig.OptInMode.OPTIONAL,
-                                    mContext.getString(R.string.history_sync_title),
-                                    mContext.getString(R.string.history_sync_subtitle))
-                            .signinSurveyType(
-                                    SigninSurveyController.SigninSurveyType.NTP_SIGNIN_BUTTON)
-                            .build();
-            if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
-                assumeNonNull(mSigninCoordinator).startSigninFlow(config);
-            } else {
-                @Nullable Intent intent =
-                        SigninAndHistorySyncActivityLauncherImpl.get()
-                                .createBottomSheetSigninIntentOrShowError(
-                                        mContext,
-                                        originalProfile,
-                                        config,
-                                        SigninAccessPoint.NTP_SIGNED_OUT_ICON);
-                if (intent != null) {
-                    mContext.startActivity(intent);
-                }
-            }
-        } else {
-            SettingsNavigation settingsNavigation =
-                    SettingsNavigationFactory.createSettingsNavigation();
-            settingsNavigation.startSettings(mContext);
-            SigninSurveyController.registerTrigger(
-                    originalProfile,
-                    SigninSurveyController.SigninSurveyType.NTP_ACCOUNT_AVATAR_TAP);
-        }
+        // Identity Disc is always hidden — this handler is never reached.
     }
 
     @VisibleForTesting

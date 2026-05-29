@@ -80,7 +80,9 @@ public class HistorySyncCoordinator {
 
     public void destroy() {
         setView(null, false);
-        mMediator.destroy();
+        if (mMediator != null) {
+            mMediator.destroy();
+        }
     }
 
     /**

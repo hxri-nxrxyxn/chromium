@@ -633,6 +633,7 @@ public class NewTabPage
                 // Return a no-op scroll delegate so callers never receive null.
                 return new FeedSurfaceScrollDelegate() {
                     @Override public boolean isScrollViewInitialized() { return false; }
+                    @Override public boolean isChildVisibleAtPosition(int position) { return false; }
                     @Override public int getVerticalScrollOffset() { return 0; }
                     @Override public void snapScroll() {}
                 };

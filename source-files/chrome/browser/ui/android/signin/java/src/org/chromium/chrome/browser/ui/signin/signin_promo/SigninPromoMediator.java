@@ -115,11 +115,13 @@ final class SigninPromoMediator
             updateModel(visibleAccount);
         }
 
-        mIdentityManager.addObserver(this);
-        if (mSyncService != null) {
-            mSyncService.addSyncStateChangedListener(this);
+        if (mShouldShowPromo) {
+            mIdentityManager.addObserver(this);
+            if (mSyncService != null) {
+                mSyncService.addSyncStateChangedListener(this);
+            }
+            mProfileDataCache.addObserver(this);
         }
-        mProfileDataCache.addObserver(this);
     }
 
     void destroy() {
