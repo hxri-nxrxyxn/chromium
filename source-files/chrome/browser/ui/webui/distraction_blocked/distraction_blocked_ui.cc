@@ -56,7 +56,7 @@ body{
   --text-color:var(--google-gray-700);
   background:var(--background-color);
   color:var(--text-color);
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
+  font-family:Geist,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen,Ubuntu,Cantarell,"Fira Sans","Droid Sans","Helvetica Neue",sans-serif;
   word-wrap:break-word;
   margin:0;padding:0
 }

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Geist variable font family — supports weights 100 through 900 -->
+<font-family xmlns:android="http://schemas.android.com/apk/res/android">
+    <font
+        android:font="@font/geist"
+        android:fontWeight="100"
+        android:fontStyle="normal" />
+    <font
+        android:font="@font/geist"
+        android:fontWeight="400"
+        android:fontStyle="normal" />
+    <font
+        android:font="@font/geist"
+        android:fontWeight="700"
+        android:fontStyle="normal" />
+    <font
+        android:font="@font/geist_italic"
+        android:fontWeight="100"
+        android:fontStyle="italic" />
+    <font
+        android:font="@font/geist_italic"
+        android:fontWeight="400"
+        android:fontStyle="italic" />
+    <font
+        android:font="@font/geist_italic"
+        android:fontWeight="700"
+        android:fontStyle="italic" />
+</font-family>
