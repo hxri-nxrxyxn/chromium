@@ -68,6 +68,10 @@ class ShortsReelsBlockerThrottle final : public content::NavigationThrottle {
  private:
   explicit ShortsReelsBlockerThrottle(
       content::NavigationThrottleRegistry& registry);
+
+  // Shared implementation for WillStartRequest and WillRedirectRequest.
+  // Calls CheckURL and, if blocked, calls BlockRequestWithPage.
+  [[nodiscard]] static ThrottleCheckResult CheckAndMaybeBlock(const GURL& url);
 };
 
 // WebContentsObserver + UserData that intercepts same-document (SPA)

@@ -6,14 +6,13 @@
 
 #include <string>
 
-#include "base/json/json_writer.h"
+#include "base/base64.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "base/values.h"
 #include "chrome/browser/content_injection/content_injection_rules.h"
-#include "content/public/common/isolated_world_ids.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/common/isolated_world_ids.h"
 #include "url/gurl.h"
 
 namespace content_injection {
@@ -58,27 +57,33 @@ void ContentInjectionManager::RunMatchingRules(
       continue;
     }
 
-    std::string script;
+    std::u16string script;
 
     if (rule.type == InjectionType::kCSS) {
-      // Wrap CSS in a <style> element via JS so we have one uniform injection
-      // path. The CSS string is JSON-encoded to safely escape quotes, newlines,
-      // and any other characters that would break the JS string literal.
-      std::string json_css;
-      base::JSONWriter::Write(base::Value(std::string(rule.payload)), &json_css);
-      script =
+      // Encode the CSS as Base64 and construct a data-URI stylesheet link.
+      // This is the safest injection technique:
+      //   - No string escaping needed — Base64 is safe in any JS context.
+      //   - No risk of CSS content breaking out of a JS string literal.
+      //   - The <link> element approach keeps styles in the document's
+      //     own cascade, visible to DevTools, and avoids innerHTML parsing.
+      //   - Runs in an isolated world so page JS cannot observe or tamper
+      //     with the injected element via document.stylesheets.
+      const std::string encoded =
+          base::Base64Encode(std::string_view(rule.payload));
+      script = base::UTF8ToUTF16(
           "(function(){"
-          "var s=document.createElement('style');"
-          "s.textContent=" + json_css + ";"
-          "document.head.appendChild(s);"
-          "})();";
+          "var l=document.createElement('link');"
+          "l.rel='stylesheet';"
+          "l.href='data:text/css;base64," + encoded + "';"
+          "document.head.appendChild(l);"
+          "})();");
     } else {
-      // kJavaScript: inject as-is; payloads are already IIFEs.
-      script = std::string(rule.payload);
+      // kJavaScript: inject as-is in an isolated world; payloads are IIFEs.
+      script = base::UTF8ToUTF16(std::string(rule.payload));
     }
 
     frame->ExecuteJavaScriptInIsolatedWorld(
-        base::UTF8ToUTF16(script),
+        script,
         /*callback=*/base::NullCallback(),
         content::ISOLATED_WORLD_ID_CONTENT_END);
   }

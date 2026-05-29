@@ -1,0 +1,45 @@
+# Copyright 2026 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+# Per-platform URL block rule files.
+#
+# To add a new platform:
+#   1. Create <name>_block_rules.h + <name>_block_rules.cc in this directory.
+#   2. Add both to the |sources| list below.
+#   3. Include the header in all_block_rules.cc and call its Get*Rules()
+#      functions in the two aggregation lambdas.
+#
+# No other BUILD files need to change (the parent target already depends on
+# this one).
+
+source_set("platform_rules") {
+  sources = [
+    # Shared type definitions (header-only)
+    "block_rule_types.h",
+
+    # Aggregator (the only file that knows about all platforms)
+    "all_block_rules.h",
+    "all_block_rules.cc",
+
+    # ── Per-platform rule files (alphabetical) ───────────────────────────────
+    "facebook_block_rules.h",
+    "facebook_block_rules.cc",
+    "instagram_block_rules.h",
+    "instagram_block_rules.cc",
+    "linkedin_block_rules.h",
+    "linkedin_block_rules.cc",
+    "reddit_block_rules.h",
+    "reddit_block_rules.cc",
+    "tiktok_block_rules.h",
+    "tiktok_block_rules.cc",
+    "x_block_rules.h",
+    "x_block_rules.cc",
+    "youtube_block_rules.h",
+    "youtube_block_rules.cc",
+  ]
+
+  deps = [
+    "//base",
+  ]
+}

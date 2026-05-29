@@ -1,80 +1,120 @@
 #!/usr/bin/env python3
 """Apply custom patches to a Chromium checkout.
-Usage: apply-patches.py /path/to/chromium/src /path/to/patches/dir
+
+Usage:
+    apply-patches.py /path/to/chromium/src /path/to/patches/dir
+
+The patches directory must contain a ``source-files/`` sub-directory that
+mirrors the Chromium ``src/`` layout.  All files inside ``source-files/`` are
+copied verbatim into the matching location inside ``chromium_src``.
+
+Two existing Chromium source files are then surgically modified in-place:
+
+  1. chrome/browser/chrome_content_browser_client_navigation_throttles.cc
+       - Adds ``#include`` directives for the new modules.
+       - Registers ``ShortsReelsBlockerThrottle``, ``ShortsReelsBlockerTabHelper``,
+         and ``ContentInjectionManager`` in
+         ``CreateAndAddChromeThrottlesForNavigation()``.
+
+  2. chrome/browser/BUILD.gn
+       - Adds ``//chrome/browser/navigation_policy:shorts_reels_blocker`` and
+         ``//chrome/browser/content_injection:content_injection`` to the main
+         browser target's ``deps`` list.
 """
 
+import argparse
 import os
-import sys
 import shutil
+import sys
 
 
-def main():
-    chromium_src = sys.argv[1]
-    patches_dir = sys.argv[2]
-    source_files = os.path.join(patches_dir, "source-files")
+def die(message: str) -> None:
+    """Print an error message to stderr and exit with code 1."""
+    print(f"error: {message}", file=sys.stderr)
+    sys.exit(1)
 
-    print("━━━ Applying custom source files ━━━")
 
-    # 1. Copy ALL new source files into the Chromium tree.
-    #    The source-files directory mirrors the src/ layout.
-    for root, dirs, files in os.walk(source_files):
-        for f in files:
-            src_path = os.path.join(root, f)
-            rel_path = os.path.relpath(src_path, source_files)
+def read_file(path: str) -> str:
+    """Read *path* and return its contents, or die with a helpful message."""
+    try:
+        with open(path, encoding="utf-8") as fh:
+            return fh.read()
+    except FileNotFoundError:
+        die(f"file not found: {path!r}\n"
+            "  Is CHROMIUM_SRC pointing at the correct checkout?")
+    except PermissionError:
+        die(f"permission denied reading {path!r}")
+
+
+def write_file(path: str, content: str) -> None:
+    """Write *content* to *path*, or die with a helpful message."""
+    try:
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(content)
+    except PermissionError:
+        die(f"permission denied writing {path!r}")
+
+
+def copy_source_files(source_files_dir: str, chromium_src: str) -> None:
+    """Recursively copy every file under *source_files_dir* into *chromium_src*."""
+    print("━━━ Copying new source files ━━━")
+    for root, _dirs, files in os.walk(source_files_dir):
+        for fname in files:
+            src_path = os.path.join(root, fname)
+            rel_path = os.path.relpath(src_path, source_files_dir)
             dest_path = os.path.join(chromium_src, rel_path)
             os.makedirs(os.path.dirname(dest_path), exist_ok=True)
             shutil.copy2(src_path, dest_path)
-            print(f"  ✓ Added {rel_path}")
+            print(f"  ✓ Copied  {rel_path}")
 
-    # 2. Register throttle + tab helper + content injection manager in the
-    #    navigation throttles file.
-    throttles_file = os.path.join(
-        chromium_src,
-        "chrome/browser/chrome_content_browser_client_navigation_throttles.cc"
-    )
 
-    with open(throttles_file) as f:
-        content = f.read()
+def patch_throttles_file(chromium_src: str) -> None:
+    """Add includes and throttle/tab-helper registration to the navigation throttles file."""
+    print("\n━━━ Patching navigation throttles file ━━━")
 
+    rel = "chrome/browser/chrome_content_browser_client_navigation_throttles.cc"
+    path = os.path.join(chromium_src, rel)
+    content = read_file(path)
     modified = False
 
-    # 2a. Add shorts_reels_blocker include (content_injection is covered
-    #     by the block header which includes the manager).
-    include_blocker = (
-        '#include "chrome/browser/navigation_policy/shorts_reels_blocker.h"'
-    )
+    # ── 1a. Add content_injection include ────────────────────────────────────
     include_injection = (
         '#include "chrome/browser/content_injection/content_injection_manager.h"'
     )
-
     if include_injection in content:
         print("  - content_injection include already present, skipping")
     else:
         anchor = '#include "chrome/browser/data_sharing/data_sharing_navigation_throttle.h"'
-        content = content.replace(
-            anchor,
-            anchor + "\n" + include_injection
-        )
+        if anchor not in content:
+            die(f"anchor not found in {rel!r}:\n  {anchor!r}\n"
+                "  The Chromium tree may be a different version than expected.")
+        content = content.replace(anchor, anchor + "\n" + include_injection)
         modified = True
         print("  ✓ Added content_injection #include")
 
+    # ── 1b. Add shorts_reels_blocker include ──────────────────────────────────
+    include_blocker = (
+        '#include "chrome/browser/navigation_policy/shorts_reels_blocker.h"'
+    )
     if include_blocker in content:
         print("  - shorts_reels_blocker include already present, skipping")
     else:
-        anchor = '#include "chrome/browser/content_injection/content_injection_manager.h"'
         content = content.replace(
-            anchor,
-            anchor + "\n" + include_blocker
+            include_injection,
+            include_injection + "\n" + include_blocker,
         )
         modified = True
         print("  ✓ Added shorts_reels_blocker #include")
 
-    # 2b. Add throttle + tab-helper + injection manager registration
-    registration = "ShortsReelsBlockerThrottle::CreateForNavigation"
-    if registration in content:
+    # ── 1c. Register throttle + tab-helper + injection manager ────────────────
+    registration_sentinel = "ShortsReelsBlockerThrottle::CreateForNavigation"
+    if registration_sentinel in content:
         print("  - Throttle registration already present, skipping")
     else:
         anchor = "page_load_metrics::MetricsNavigationThrottle::CreateAndAdd(registry);"
+        if anchor not in content:
+            die(f"anchor not found in {rel!r}:\n  {anchor!r}\n"
+                "  The Chromium tree may be a different version than expected.")
         insert = (
             "    // Block short-form video feed URLs (YouTube Shorts, Instagram Reels,\n"
             "    // Facebook Reels/Watch, Reddit Reels, X Reels, LinkedIn Reels).\n"
@@ -92,45 +132,89 @@ def main():
         )
         content = content.replace(anchor, anchor + "\n" + insert)
         modified = True
-        print("  ✓ Added throttle + tab-helper + injection-registration")
+        print("  ✓ Added throttle + tab-helper + injection-manager registration")
 
     if modified:
-        with open(throttles_file, "w") as f:
-            f.write(content)
+        write_file(path, content)
 
-    # 3. Add source_set deps to chrome/browser/BUILD.gn
-    build_gn = os.path.join(chromium_src, "chrome/browser/BUILD.gn")
 
-    with open(build_gn) as f:
-        gn_content = f.read()
+def patch_build_gn(chromium_src: str) -> None:
+    """Add source_set deps to chrome/browser/BUILD.gn."""
+    print("\n━━━ Patching chrome/browser/BUILD.gn ━━━")
 
+    path = os.path.join(chromium_src, "chrome/browser/BUILD.gn")
+    content = read_file(path)
     gn_modified = False
 
-    # Dep for shorts_reels_blocker source_set (handles //base, //content/public/browser, //third_party/re2, //ui/base, //url)
     blocker_dep = '"//chrome/browser/navigation_policy:shorts_reels_blocker"'
     injection_dep = '"//chrome/browser/content_injection:content_injection"'
 
-    if blocker_dep in gn_content and injection_dep in gn_content:
+    if blocker_dep in content and injection_dep in content:
         print("  - Both source_set deps already present, skipping")
-    else:
-        # Add after the navigation_predictor dep (alphabetical)
-        anchor = '"//chrome/browser/navigation_predictor",'
-        insert = (
-            f"\n    {blocker_dep},"
-            f"\n    {injection_dep},"
-        )
-        if blocker_dep in gn_content:
-            print(f"  - {blocker_dep} already present")
-        else:
-            gn_content = gn_content.replace(anchor, anchor + insert)
-            gn_modified = True
-            print(f"  ✓ Added {blocker_dep} and {injection_dep} to deps")
+        return
+
+    anchor = '"//chrome/browser/navigation_predictor",'
+    if anchor not in content:
+        die(f"anchor not found in chrome/browser/BUILD.gn:\n  {anchor!r}\n"
+            "  The Chromium tree may be a different version than expected.")
+
+    insert_parts = []
+    if blocker_dep not in content:
+        insert_parts.append(f"\n    {blocker_dep},")
+    if injection_dep not in content:
+        insert_parts.append(f"\n    {injection_dep},")
+
+    if insert_parts:
+        content = content.replace(anchor, anchor + "".join(insert_parts))
+        gn_modified = True
+        for dep in (blocker_dep, injection_dep):
+            if dep in "".join(insert_parts):
+                print(f"  ✓ Added {dep} to deps")
 
     if gn_modified:
-        with open(build_gn, "w") as f:
-            f.write(gn_content)
+        write_file(path, content)
 
-    print("━━━ Patches applied successfully ━━━")
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description=__doc__,
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    parser.add_argument(
+        "chromium_src",
+        metavar="CHROMIUM_SRC",
+        help="Absolute path to the Chromium src/ checkout directory.",
+    )
+    parser.add_argument(
+        "patches_dir",
+        metavar="PATCHES_DIR",
+        help="Path to this patches repository (the directory containing apply-patches.py).",
+    )
+    return parser.parse_args()
+
+
+def validate_args(args: argparse.Namespace) -> None:
+    if not os.path.isdir(args.chromium_src):
+        die(f"CHROMIUM_SRC is not a directory: {args.chromium_src!r}")
+    if not os.path.isdir(args.patches_dir):
+        die(f"PATCHES_DIR is not a directory: {args.patches_dir!r}")
+
+    source_files = os.path.join(args.patches_dir, "source-files")
+    if not os.path.isdir(source_files):
+        die(f"source-files/ directory not found inside PATCHES_DIR: {source_files!r}")
+
+
+def main() -> None:
+    args = parse_args()
+    validate_args(args)
+
+    source_files_dir = os.path.join(args.patches_dir, "source-files")
+
+    copy_source_files(source_files_dir, args.chromium_src)
+    patch_throttles_file(args.chromium_src)
+    patch_build_gn(args.chromium_src)
+
+    print("\n━━━ All patches applied successfully ━━━")
 
 
 if __name__ == "__main__":

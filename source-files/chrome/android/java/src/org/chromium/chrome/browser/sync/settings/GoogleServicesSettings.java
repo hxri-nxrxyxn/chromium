@@ -114,14 +114,9 @@ public class GoogleServicesSettings extends ChromeBaseSettingsFragment
 
         mAllowSignin = (ChromeSwitchPreference) findPreference(PREF_ALLOW_SIGNIN);
 
-        if (!shouldShowAllowSignIn(getProfile())) {
-            // Do not display option to allow / disallow sign-in for supervised accounts since
-            // these require the user to be signed-in and syncing.
-            mAllowSignin.setVisible(false);
-        } else {
-            mAllowSignin.setOnPreferenceChangeListener(this);
-            mAllowSignin.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
-        }
+        // Sign-in toggle is intentionally disabled in this distraction-free fork.
+        // Keeping the preference hidden avoids presenting sign-in entry points.
+        mAllowSignin.setVisible(false);
 
         mSearchSuggestions = (ChromeSwitchPreference) findPreference(PREF_SEARCH_SUGGESTIONS);
         mSearchSuggestions.setOnPreferenceChangeListener(this);

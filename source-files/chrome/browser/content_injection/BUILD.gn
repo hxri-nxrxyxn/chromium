@@ -1,13 +1,21 @@
+source_set("injection_rule_types") {
+  sources = [
+    "content_injection_rules.h",
+  ]
+}
+
 source_set("content_injection") {
   sources = [
     "content_injection_manager.cc",
     "content_injection_manager.h",
     "content_injection_rules.cc",
-    "content_injection_rules.h",
   ]
 
   deps = [
+    ":injection_rule_types",
     "//base",
+    "//base:base64",
+    "//chrome/browser/content_injection/platforms:platforms",
     "//content/public/browser",
     "//url",
   ]

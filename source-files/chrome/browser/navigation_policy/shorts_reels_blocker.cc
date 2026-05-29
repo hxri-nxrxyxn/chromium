@@ -11,9 +11,11 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
+#include "chrome/browser/navigation_policy/platform_rules/all_block_rules.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/navigation_throttle.h"
 #include "content/public/browser/navigation_throttle_registry.h"
 #include "content/public/browser/web_contents.h"
 #include "net/base/net_errors.h"
@@ -22,86 +24,6 @@
 #include "url/gurl.h"
 
 namespace {
-
-// ---------------------------------------------------------------------------
-// Block rule table
-//
-// Each entry is a (registrable_domain, lower-cased path prefix) pair.
-// PathMatchesPrefix() enforces component-boundary matching, so "/reel" does
-// NOT match "/reelfilm".
-//
-// To add a new rule: append a row here. No logic changes required.
-// ---------------------------------------------------------------------------
-struct BlockRule {
-  std::string_view registrable_domain;
-  std::string_view path_prefix;  // must be lower-cased; "" = entire domain
-};
-
-constexpr BlockRule kPrefixBlockRules[] = {
-    // ── YouTube ──────────────────────────────────────────────────────────────
-    {"youtube.com", "/shorts"},
-
-    // ── Instagram ────────────────────────────────────────────────────────────
-    // Blocks the Reels browse feed (/reels/…).
-    // Does NOT block profile videos (/username/reel/…) — those start with the
-    // username segment, not "/reels", so they pass through naturally.
-    {"instagram.com", "/reels"},
-
-    // ── Facebook ─────────────────────────────────────────────────────────────
-    {"facebook.com", "/reels"},  // facebook.com/reels/<id>
-    {"facebook.com", "/reel"},   // facebook.com/reel/<id>  (singular variant)
-    {"facebook.com", "/watch"},  // facebook.com/watch/     (Watch feed)
-
-    // ── Reddit ───────────────────────────────────────────────────────────────
-    {"reddit.com", "/reels"},
-
-    // ── X / Twitter ──────────────────────────────────────────────────────────
-    {"x.com", "/i/reels"},
-
-    // ── LinkedIn ─────────────────────────────────────────────────────────────
-    {"linkedin.com", "/videos/reels"},
-
-    // ── TikTok ───────────────────────────────────────────────────────────────
-    // Block the entire domain — all content, all paths.
-    {"tiktok.com", ""},
-};
-
-// ---------------------------------------------------------------------------
-// Regex-based rules for patterns that can't be expressed as a simple prefix.
-// Each pattern is matched against the full path (lower-cased).
-// ---------------------------------------------------------------------------
-struct RegexBlockRule {
-  std::string_view registrable_domain;
-  // RE2 pattern — compiled once on first use via function-local static.
-  std::string_view pattern;
-};
-
-constexpr RegexBlockRule kRegexBlockRules[] = {
-    // Reddit mobile share short-links: /r/<subreddit>/s/<id>
-    // These can't be prefix-blocked without also blocking all of /r/.
-    {"reddit.com", R"(/r/[^/]+/s/[^/]+)"},
-};
-
-// Returns true if the regex rule matches the given lower-cased path.
-// Each RE2 is compiled once (Meyer's singleton) and reused.
-bool MatchesRegexRule(const RegexBlockRule& rule, std::string_view path) {
-  // RE2 objects are thread-safe after construction.
-  // We heap-allocate and intentionally leak — same pattern Chromium uses
-  // for long-lived compiled regexes (see base/strings/pattern.cc).
-  static const auto* kCompiledPatterns = [] {
-    auto* patterns =
-        new std::vector<std::unique_ptr<RE2>>(std::size(kRegexBlockRules));
-    for (size_t i = 0; i < std::size(kRegexBlockRules); ++i) {
-      (*patterns)[i] =
-          std::make_unique<RE2>(std::string(kRegexBlockRules[i].pattern));
-    }
-    return patterns;
-  }();
-
-  const size_t index =
-      static_cast<size_t>(&rule - std::begin(kRegexBlockRules));
-  return RE2::PartialMatch(path, *(*kCompiledPatterns)[index]);
-}
 
 // ---------------------------------------------------------------------------
 // Session-wide block counter (atomic, not persisted across restarts).
@@ -173,7 +95,7 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
 }
 @media(max-width:700px){.interstitial-wrapper{padding:0 10%}}
 @media(max-width:420px){
-  .interstitial-wrapper{padding:0 5%;margin:7vh auto 12px;padding:0 24px}
+  .interstitial-wrapper{margin:7vh auto 12px;padding:0 24px}
   h1{font-size:1.5em;margin-bottom:8px}
   .icon{margin-bottom:5.69vh}
 }
@@ -199,6 +121,26 @@ p{color:var(--text-color);font-size:1.1em;line-height:1.55;margin-top:8px}
   });
 }
 
+// Returns true if the regex rule matches the given lower-cased path.
+// Each RE2 is compiled once (Meyer's singleton keyed by pattern index in the
+// aggregated rules vector) and reused for the process lifetime.
+bool MatchesRegexRule(size_t rule_index, std::string_view pattern,
+                      std::string_view path) {
+  // RE2 objects are thread-safe after construction.
+  // We heap-allocate and intentionally leak — same pattern Chromium uses
+  // for long-lived compiled regexes (see base/strings/pattern.cc).
+  static const auto* kCompiledPatterns = [] {
+    const auto& rules = GetAllRegexBlockRules();
+    auto* patterns = new std::vector<std::unique_ptr<RE2>>(rules.size());
+    for (size_t i = 0; i < rules.size(); ++i) {
+      (*patterns)[i] = std::make_unique<RE2>(std::string(rules[i].pattern));
+    }
+    return patterns;
+  }();
+
+  return RE2::PartialMatch(path, *(*kCompiledPatterns)[rule_index]);
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -220,16 +162,17 @@ ShortsReelsBlockerThrottle::~ShortsReelsBlockerThrottle() = default;
 
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillStartRequest() {
-  const GURL& url = navigation_handle()->GetURL();
-  if (CheckURL(url).action() == BLOCK_REQUEST) {
-    return BlockRequestWithPage(url);
-  }
-  return PROCEED;
+  return CheckAndMaybeBlock(navigation_handle()->GetURL());
 }
 
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::WillRedirectRequest() {
-  const GURL& url = navigation_handle()->GetURL();
+  return CheckAndMaybeBlock(navigation_handle()->GetURL());
+}
+
+// static
+content::NavigationThrottle::ThrottleCheckResult
+ShortsReelsBlockerThrottle::CheckAndMaybeBlock(const GURL& url) {
   if (CheckURL(url).action() == BLOCK_REQUEST) {
     return BlockRequestWithPage(url);
   }
@@ -243,8 +186,12 @@ const char* ShortsReelsBlockerThrottle::GetNameForLogging() {
 // static
 content::NavigationThrottle::ThrottleCheckResult
 ShortsReelsBlockerThrottle::BlockRequestWithPage(const GURL& url) {
-  g_block_count.fetch_add(1, std::memory_order_relaxed);
-  std::string html = BuildBlockPageHTML(g_block_count.load(std::memory_order_relaxed));
+  // fetch_add returns the *previous* value; add 1 to get the new count.
+  // Using the return value avoids a separate load and the TOCTOU race that
+  // would occur with a subsequent atomic load.
+  int new_count =
+      g_block_count.fetch_add(1, std::memory_order_relaxed) + 1;
+  std::string html = BuildBlockPageHTML(new_count);
   return ThrottleCheckResult(BLOCK_REQUEST, net::ERR_BLOCKED_BY_CLIENT,
                              std::make_optional(std::move(html)));
 }
@@ -257,8 +204,8 @@ ShortsReelsBlockerThrottle::CheckURL(const GURL& url) {
 
   const std::string lower_path = base::ToLowerASCII(url.path());
 
-  // Prefix rules — O(n) but n is tiny and all comparisons are in L1 cache.
-  for (const auto& rule : kPrefixBlockRules) {
+  // Prefix rules — O(n) but n is small and all comparisons are in L1 cache.
+  for (const auto& rule : GetAllPrefixBlockRules()) {
     if (!url.DomainIs(rule.registrable_domain))
       continue;
     if (rule.path_prefix.empty() ||
@@ -268,9 +215,10 @@ ShortsReelsBlockerThrottle::CheckURL(const GURL& url) {
   }
 
   // Regex rules — only evaluated when domain matches, so rarely hit.
-  for (const auto& rule : kRegexBlockRules) {
-    if (url.DomainIs(rule.registrable_domain) &&
-        MatchesRegexRule(rule, lower_path)) {
+  const auto& regex_rules = GetAllRegexBlockRules();
+  for (size_t i = 0; i < regex_rules.size(); ++i) {
+    if (url.DomainIs(regex_rules[i].registrable_domain) &&
+        MatchesRegexRule(i, regex_rules[i].pattern, lower_path)) {
       return BLOCK_REQUEST;
     }
   }

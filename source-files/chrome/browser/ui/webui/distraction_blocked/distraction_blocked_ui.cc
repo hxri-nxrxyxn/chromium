@@ -15,7 +15,6 @@
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
-#include "url/gurl.h"
 
 namespace {
 
@@ -82,10 +81,9 @@ p{color:var(--text-color);font-size:1.1em;margin-top:8px;line-height:1.55}
 }
 @media(max-width:700px){.interstitial-wrapper{padding:0 10%}}
 @media(max-width:420px){
-  .interstitial-wrapper{padding:0 5%}
+  .interstitial-wrapper{margin:7vh auto 12px;padding:0 24px}
   h1{font-size:1.5em;margin-bottom:8px}
   .icon{margin-bottom:5.69vh}
-  .interstitial-wrapper{margin:7vh auto 12px;padding:0 24px}
 }
 </style>
 </head>

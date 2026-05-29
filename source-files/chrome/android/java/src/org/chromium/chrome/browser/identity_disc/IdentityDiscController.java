@@ -180,6 +180,8 @@ public class IdentityDiscController
 
     @Override
     public ButtonData get(@Nullable Tab tab) {
+        // The Identity Disc is intentionally always hidden in this distraction-free
+        // fork. Google sign-in is not supported, so the button serves no purpose.
         mButtonData.setCanShow(false);
         return mButtonData;
     }
@@ -401,37 +403,23 @@ public class IdentityDiscController
     private void setProfile(Profile profile) {
         mProfile = profile;
 
+        // Clean up any previously registered observers.
         if (mSyncService != null) {
             mSyncService.removeSyncStateChangedListener(this);
+            mSyncService = null;
         }
-
         if (mIdentityManager != null) {
             mIdentityManager.removeObserver(this);
+            mIdentityManager = null;
         }
-
         if (mSigninCoordinator != null) {
             mSigninCoordinator.destroy();
             mSigninCoordinator = null;
         }
 
-        if (profile.isOffTheRecord()) {
-            mIdentityManager = null;
-            mSyncService = null;
-        } else {
-            mIdentityManager = IdentityServicesProvider.get().getIdentityManager(profile);
-            assumeNonNull(mIdentityManager);
-            mIdentityManager.addObserver(this);
-            calculateButtonData();
-            initializeSigninCoordinator();
-
-            mSyncService = SyncServiceFactory.getForProfile(profile);
-            if (mSyncService != null) {
-                mSyncService.addSyncStateChangedListener(this);
-                maybeUpdateIdentityErrorAndBadge();
-            }
-
-            notifyObservers(true);
-        }
+        // The Identity Disc is always hidden in this fork; skip all profile-data
+        // cache construction, sync observation, and sign-in coordinator setup
+        // since no observer notification will ever make the button visible.
     }
 
     @VisibleForTesting

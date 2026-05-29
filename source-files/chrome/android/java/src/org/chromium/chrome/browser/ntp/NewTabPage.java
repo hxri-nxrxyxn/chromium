@@ -618,6 +618,7 @@ public class NewTabPage
                 ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         rootView.addView(mNewTabPageLayout);
+        final UiConfig ntpUiConfig = new UiConfig(rootView);
         mFeedSurfaceProvider = new FeedSurfaceProvider() {
             @Override
             public void destroy() {}
@@ -629,12 +630,17 @@ public class NewTabPage
 
             @Override
             public FeedSurfaceScrollDelegate getScrollDelegate() {
-                return null;
+                // Return a no-op scroll delegate so callers never receive null.
+                return new FeedSurfaceScrollDelegate() {
+                    @Override public boolean isScrollViewInitialized() { return false; }
+                    @Override public int getVerticalScrollOffset() { return 0; }
+                    @Override public void snapScroll() {}
+                };
             }
 
             @Override
             public UiConfig getUiConfig() {
-                return null;
+                return ntpUiConfig;
             }
 
             @Override
@@ -1212,7 +1218,9 @@ public class NewTabPage
     }
 
     public FeedSurfaceCoordinator getCoordinatorForTesting() {
-        return (FeedSurfaceCoordinator) mFeedSurfaceProvider;
+        // Feed surface is not used in this fork; there is no FeedSurfaceCoordinator.
+        throw new UnsupportedOperationException(
+                "FeedSurfaceCoordinator is not available in the distraction-free fork.");
     }
 
     public NewTabPageManager getNewTabPageManagerForTesting() {
@@ -1224,8 +1232,9 @@ public class NewTabPage
     }
 
     public FeedActionDelegate getFeedActionDelegateForTesting() {
-        return ((FeedSurfaceCoordinator) mFeedSurfaceProvider)
-                .getActionDelegateForTesting(); // IN-TEST
+        // Feed surface is not used in this fork; there is no FeedActionDelegate.
+        throw new UnsupportedOperationException(
+                "FeedActionDelegate is not available in the distraction-free fork.");
     }
 
     /**
