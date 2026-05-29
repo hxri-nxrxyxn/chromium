@@ -90,7 +90,9 @@ public class HistorySyncCoordinator {
      * configured to do so on decline.
      */
     public void declineAndDismiss() {
-        mMediator.declineAndDismiss();
+        if (mMediator != null) {
+            mMediator.declineAndDismiss();
+        }
     }
 
     public @Nullable HistorySyncView getView() {
@@ -108,7 +110,7 @@ public class HistorySyncCoordinator {
             mPropertyModelChangeProcessor.destroy();
             mPropertyModelChangeProcessor = null;
         }
-        if (view != null) {
+        if (view != null && mMediator != null) {
             boolean useAlternateIllustration =
                     ChromeFeatureList.isEnabled(
                             ChromeFeatureList.USE_ALTERNATE_HISTORY_SYNC_ILLUSTRATION);
