@@ -8,42 +8,139 @@ namespace content_injection {
 
 namespace {
 
-// instagram.com/ — hide Stories tray only; the main feed is intentional.
+// instagram.com — route-aware JS that hides the feed/stories/explore grid,
+// preserves search/headers, unloads video assets, and handles SPA navigation.
 //
-// Three selectors in descending stability order:
-//   1. data-pagelet="story_tray"  — most stable, used since early Instagram PWA
-//   2. aria-label="Stories"       — ARIA fallback when pagelet attr is absent
-//   3. section:has(> div > ul > li > div > canvas)
-//                                 — structural fallback targeting the canvas-
-//                                   rendered carousel that Stories uses
-constexpr std::string_view kInstagramHomeCSS = R"CSS(
-  [data-pagelet="story_tray"],
-  [aria-label="Stories"],
-  section:has(> div > ul > li > div > canvas) {
-    display: none !important;
+// Three route modes:
+//   /          → hide stories tray + main feed, pause/unload videos
+//   /explore   → hide explore grid children (preserves search/header)
+//   /anything  → cleanup/restore all hidden elements
+//
+// SPA-aware: patches pushState/replaceState and listens for popstate so
+// the correct blocking mode is applied on every soft navigation.
+constexpr std::string_view kInstagramJS = R"JS(
+(function() {
+  function applyBlock() {
+    let path = window.location.pathname;
+    if (path === '/' || path === '') {
+      cleanupExploreBlock();
+      applyHomeBlock();
+    } else if (path.startsWith('/explore')) {
+      cleanupHomeBlock();
+      applyExploreBlock();
+    } else {
+      cleanupExploreBlock();
+      cleanupHomeBlock();
+    }
   }
-)CSS";
 
-// instagram.com/explore — hide the algorithmic grid and its infinite-scroll
-// machinery. Body scroll is locked so background loading stops entirely.
-constexpr std::string_view kInstagramExploreCSS = R"CSS(
-  /* Algorithmic explore grid */
-  main div:has(> div > div > div > a[href*="/p/"]) {
-    display: none !important;
+  function applyHomeBlock() {
+    const storyTray = document.querySelector('[data-pagelet="story_tray"]') ||
+                      document.querySelector('a[href^="/stories/"]')?.closest('div');
+    if (storyTray && !storyTray.hidden) {
+      storyTray.setAttribute('data-org-class', storyTray.className);
+      storyTray.className = '';
+      storyTray.hidden = true;
+    }
+    const mainEl = document.querySelector('main') || document.querySelector('div[role="main"]');
+    if (mainEl && !mainEl.hasAttribute('data-focus-blocked-home')) {
+      mainEl.setAttribute('data-focus-blocked-home', 'true');
+      mainEl.setAttribute('data-org-class-main', mainEl.className);
+      mainEl.className = '';
+      mainEl.hidden = true;
+      mainEl.querySelectorAll('video').forEach(v => {
+        try { v.pause(); v.removeAttribute('src');
+              v.querySelectorAll('source').forEach(s => s.removeAttribute('src'));
+              v.load(); } catch(e) {}
+      });
+    }
+    document.querySelectorAll(
+      'svg[aria-label="Loading..."], [role="progressbar"], ' +
+      'div[aria-label="Loading..."], [data-visualcompletion="loading-state"]'
+    ).forEach(sp => { sp.hidden = true; });
   }
-  /* Loading spinners / progress bars that would trigger further loads */
-  [role="progressbar"],
-  svg[aria-label="Loading..."],
-  [data-visualcompletion="loading-state"] {
-    display: none !important;
+
+  function cleanupHomeBlock() {
+    const storyTray = document.querySelector('[data-pagelet="story_tray"]') ||
+                      document.querySelector('a[href^="/stories/"]')?.closest('div');
+    if (storyTray && storyTray.hidden) {
+      if (storyTray.hasAttribute('data-org-class')) {
+        storyTray.className = storyTray.getAttribute('data-org-class');
+        storyTray.removeAttribute('data-org-class');
+      }
+      storyTray.hidden = false;
+    }
+    const mainEl = document.querySelector('main') || document.querySelector('div[role="main"]');
+    if (mainEl && mainEl.hasAttribute('data-focus-blocked-home')) {
+      mainEl.removeAttribute('data-focus-blocked-home');
+      if (mainEl.hasAttribute('data-org-class-main')) {
+        mainEl.className = mainEl.getAttribute('data-org-class-main');
+        mainEl.removeAttribute('data-org-class-main');
+      }
+      mainEl.hidden = false;
+    }
   }
-  /* Lock scroll to kill the infinite-load loop entirely */
-  body, html { overflow: hidden !important; }
-)CSS";
+
+  function applyExploreBlock() {
+    const mainEl = document.querySelector('main') || document.querySelector('div[role="main"]');
+    if (mainEl && !mainEl.hasAttribute('data-focus-blocked')) {
+      mainEl.setAttribute('data-focus-blocked', 'true');
+      mainEl.querySelectorAll('video').forEach(v => {
+        try { v.pause(); v.removeAttribute('src');
+              v.querySelectorAll('source').forEach(s => s.removeAttribute('src'));
+              v.load(); } catch(e) {}
+      });
+      Array.from(mainEl.children).forEach(child => {
+        if (child.querySelector('input') || child.querySelector('[role="search"]') ||
+            child.tagName === 'HEADER') return;
+        if (!child.hasAttribute('data-org-class'))
+          child.setAttribute('data-org-class', child.className);
+        child.hidden = true;
+        child.className = '';
+      });
+    }
+    document.querySelectorAll(
+      'svg[aria-label="Loading..."], [role="progressbar"], ' +
+      'div[aria-label="Loading..."], [data-visualcompletion="loading-state"]'
+    ).forEach(sp => { sp.hidden = true; });
+  }
+
+  function cleanupExploreBlock() {
+    const mainEl = document.querySelector('main') || document.querySelector('div[role="main"]');
+    if (mainEl && mainEl.hasAttribute('data-focus-blocked')) {
+      mainEl.removeAttribute('data-focus-blocked');
+      Array.from(mainEl.children).forEach(child => {
+        if (child.hasAttribute('data-org-class')) {
+          child.className = child.getAttribute('data-org-class');
+          child.removeAttribute('data-org-class');
+        }
+        child.hidden = false;
+      });
+    }
+  }
+
+  applyBlock();
+  const observer = new MutationObserver(() => {
+    observer.disconnect();
+    try { applyBlock(); } catch(e) {}
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+
+  ['pushState','replaceState'].forEach(m => {
+    const orig = history[m];
+    history[m] = function(...args) {
+      const r = orig.apply(this, args);
+      setTimeout(applyBlock, 0);
+      return r;
+    };
+  });
+  window.addEventListener('popstate', () => setTimeout(applyBlock, 0));
+})();
+)JS";
 
 constexpr InjectionRule kRules[] = {
-    {"instagram.com", "/",       InjectionType::kCSS, kInstagramHomeCSS},
-    {"instagram.com", "/explore", InjectionType::kCSS, kInstagramExploreCSS},
+    {"instagram.com", "", InjectionType::kJavaScript, kInstagramJS},
 };
 
 }  // namespace

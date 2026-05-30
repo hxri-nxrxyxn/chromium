@@ -21,6 +21,8 @@ source_set("platforms") {
     "instagram_rules.cc",
     "linkedin_rules.h",
     "linkedin_rules.cc",
+    "pinterest_rules.h",
+    "pinterest_rules.cc",
     "reddit_rules.h",
     "reddit_rules.cc",
     "tumblr_rules.h",

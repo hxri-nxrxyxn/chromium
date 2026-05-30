@@ -8,22 +8,31 @@ namespace content_injection {
 
 namespace {
 
-// youtube.com — hide the Shorts shelf on the home page and search results.
+// youtube.com — mobile YouTube blocker that hides all content except the
+// header bar and pivot bar (navigation). Kills feeds, player pages, shorts
+// container, and lazy-loaders.
 //
-// Hard URL blocks (throttle layer):  /shorts/<id> and /shorts browse page
-// CSS injection (this layer):        Shorts shelf row in the home feed
-//
-// The selector is keyed on the red Shorts SVG icon path fill value (#f03)
-// so it targets the section header precisely without relying on fragile
-// generated class names that change on every YouTube deploy.
-constexpr std::string_view kYoutubeShortsShelfCSS = R"CSS(
-  ytm-rich-section-renderer:has(span.yt-icon-shape svg path[fill="#f03"]) {
-    display: none !important;
-  }
-)CSS";
+// The :not() selectors preserve the minimal UI needed to search and navigate.
+constexpr std::string_view kYouTubeJS = R"JS(
+(function() {
+  var old = document.getElementById('youtube-mobile-distraction-blocker-style');
+  if (old) old.parentNode.removeChild(old);
+  var css = '';
+  css += 'ytm-app > *:not(#header-bar):not(ytm-pivot-bar-renderer):not(ytm-header-bar):not(header) { display: none !important; } ';
+  css += 'body > *:not(ytm-app):not(#header-bar):not(ytm-pivot-bar-renderer) { display: none !important; } ';
+  css += 'ytm-single-page-app-body, #content, .lazy-list, ytm-browse, ytm-watch, ytm-shorts, #shorts-container { display: none !important; } ';
+  var style = document.createElement('style');
+  style.id = 'youtube-mobile-distraction-blocker-style';
+  style.type = 'text/css';
+  if (style.styleSheet) { style.styleSheet.cssText = css; }
+  else { style.appendChild(document.createTextNode(css)); }
+  document.head.appendChild(style);
+})();
+)JS";
 
 constexpr InjectionRule kRules[] = {
-    {"youtube.com", "", InjectionType::kCSS, kYoutubeShortsShelfCSS},
+    {"youtube.com", "", InjectionType::kJavaScript, kYouTubeJS},
+    {"youtu.be",    "", InjectionType::kJavaScript, kYouTubeJS},
 };
 
 }  // namespace

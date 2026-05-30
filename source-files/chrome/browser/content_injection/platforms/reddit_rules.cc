@@ -8,32 +8,44 @@ namespace content_injection {
 
 namespace {
 
-// reddit.com — hide the algorithmic home feed.
+// reddit.com — hide the home feed and lock scroll on the root path.
+// Subreddits, search, and thread pages are unaffected.
 //
-// Subreddit pages (/r/…) are intentionally unaffected; this only matches
-// the root feed path ("/"). The hard block layer handles /reels/ and
-// mobile share short-links (/r/<sub>/s/<id>).
-//
-// Two selectors cover the feed:
-//   shreddit-feed        — the main Web Component feed container
-//   #main-content        — fallback container that wraps shreddit-feed
-//   faceplate-loader[name="HomeFeed_WnGPVB"]
-//                        — the lazy-load trigger; hiding it also stops
-//                          background fetch requests for more content
-constexpr std::string_view kRedditHomeFeedCSS = R"CSS(
-  shreddit-feed,
-  #main-content {
-    display: none !important;
-    height: 0 !important;
-    overflow: hidden !important;
+// SPA-aware: patches pushState/replaceState and listens for popstate to
+// re-apply the scroll lock on soft navigation.
+constexpr std::string_view kRedditJS = R"JS(
+(() => {
+  var old = document.getElementById('reddit-style');
+  if (old) old.parentNode.removeChild(old);
+  const style = document.createElement('style');
+  style.id = 'reddit-style';
+  style.textContent =
+    'shreddit-feed, shreddit-feed-page-loading, ' +
+    'faceplate-loader[name*="HomeFeed"], ' +
+    'suspense-placeholder[name="HomeFeed"] ' +
+    '{ display: none !important; }';
+  document.head.appendChild(style);
+
+  function applyScrollLock() {
+    document.documentElement.style.overflowY =
+      (location.pathname === '/') ? 'hidden' : '';
   }
-  faceplate-loader[name="HomeFeed_WnGPVB"] {
-    display: none !important;
-  }
-)CSS";
+  applyScrollLock();
+
+  ['pushState','replaceState'].forEach(m => {
+    const orig = history[m];
+    history[m] = function(...args) {
+      const r = orig.apply(this, args);
+      applyScrollLock();
+      return r;
+    };
+  });
+  window.addEventListener('popstate', applyScrollLock);
+})();
+)JS";
 
 constexpr InjectionRule kRules[] = {
-    {"reddit.com", "/", InjectionType::kCSS, kRedditHomeFeedCSS},
+    {"reddit.com", "", InjectionType::kJavaScript, kRedditJS},
 };
 
 }  // namespace

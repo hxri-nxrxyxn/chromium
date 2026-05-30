@@ -21,6 +21,7 @@
 #include "chrome/browser/content_injection/platforms/facebook_rules.h"
 #include "chrome/browser/content_injection/platforms/instagram_rules.h"
 #include "chrome/browser/content_injection/platforms/linkedin_rules.h"
+#include "chrome/browser/content_injection/platforms/pinterest_rules.h"
 #include "chrome/browser/content_injection/platforms/reddit_rules.h"
 #include "chrome/browser/content_injection/platforms/tumblr_rules.h"
 #include "chrome/browser/content_injection/platforms/x_rules.h"
@@ -45,6 +46,7 @@ base::span<const InjectionRule> GetInjectionRules() {
     Append(rules, GetFacebookInjectionRules());
     Append(rules, GetInstagramInjectionRules());
     Append(rules, GetLinkedInInjectionRules());
+    Append(rules, GetPinterestInjectionRules());
     Append(rules, GetRedditInjectionRules());
     Append(rules, GetTumblrInjectionRules());
     Append(rules, GetXInjectionRules());
