@@ -16,7 +16,11 @@
         });
 
         // 2. Hide all original children elements (such as the explore grid and rows)
+        // but preserve any child containing search inputs or headers
         Array.from(mainEl.children).forEach(child => {
+          if (child.querySelector('input') || child.querySelector('[role="search"]') || child.tagName === 'HEADER') {
+            return;
+          }
           child.hidden = true;
           child.className = '';
         });
@@ -43,5 +47,5 @@
 
   observer.observe(document.body, { childList: true, subtree: true });
 
-  console.log("Instagram Explore Blocker Active (Entire explore grid hidden)");
+  console.log("Instagram Explore Blocker Active (Entire explore grid hidden, search bar kept)");
 })();
