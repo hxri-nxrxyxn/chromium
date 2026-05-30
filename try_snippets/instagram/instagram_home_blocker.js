@@ -8,11 +8,11 @@
     'sponsored'
   ];
 
-  // Map of post types to clean, intentional, non-generic focus messages
+  // Map of post types to simple blocked messages
   const focusMessages = {
-    'Reel': 'Reels feed blocked. Keep the utility.',
-    'Suggestion': 'Suggested post blocked. Keep your focus.',
-    'Recommendation Module': 'Recommendation engine blocked.'
+    'Reel': 'Reel blocked',
+    'Suggestion': 'Suggested post blocked',
+    'Recommendation Module': 'Recommendation module blocked'
   };
 
   // Helper to hide elements and replace them with a minimalist canvas block of the same dimensions.
@@ -67,7 +67,7 @@
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         
-        const message = focusMessages[type] || 'Distraction blocked.';
+        const message = focusMessages[type] || 'Blocked';
         ctx.fillText(message, width / 2, height / 2);
       }
       
