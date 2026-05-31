@@ -17,3 +17,16 @@
 - Created `generate-patches.py` and updated `apply-patches.py` to automate the transition of Category A (NTP/Settings overrides) and Category B (integrations) into standard `.patch` files.
 - Re-categorized and logged Category A, B, and C integration risks to track current codebase state during the git-patch transition.
 - Defined and logged the new low-risk Category structure (Category A eliminated) after git patch generation is applied.
+- Committed and pushed all git patch workflow improvements (generate-patches.py, updated apply-patches.py, and progress.md) to GitHub.
+- Evaluated and validated the detailed risk breakdown, compile ETAs, and monthly maintenance hours estimate (2-3 hours/month) for a commercial Chromium fork.
+- Analyzed the product architecture, user feedback loops, and business monetization potential as a premium distraction-blocking Android web browser.
+- Evaluated Google Play Store compliance guidelines for custom Chromium forks and mapped out publishing requirements.
+- Analyzed and formulated a tiered subscription model (Monthly, Annual, and Lifetime Lifetime/One-time purchase) optimized for user conversion and recurring revenue.
+- Evaluated and validated the paid-upfront monetization model ($6.99–$9.99 one-time) focusing on engineering simplicity, direct cash flow, and Play Store commission tiers.
+- Finalized launch pricing strategy: Single "One-Time Purchase" tier, starting at $6.99 (early adopter pricing) and stepping up to $9.99 after achieving 50+ user reviews.
+- Formulated competitive positioning strategy, identifying the "Software-based Dumbphone" and "Deliberate Friction" target personas to address the native app bypass problem.
+- Analyzed a WebUSB/WebADB-based web utility funnel to democratize ADB system app removal (reducing technical barriers and driving browser adoption from 10 to 10k+ users).
+- Aligned on the final WebADB companion web utility funnel to support the "One-Time Purchase" ($6.99 -> $9.99) browser launch.
+- Evaluated UAD (Universal Android Debloater) integration roadmap: determined that utilizing UAD via step-by-step guides is ideal for launch (saving development overhead), while custom WebADB remains a future convenience upgrade.
+- Formulated a "Crowdsourced Telemetry" strategy for tracking target platform DOM/UI changes, bypassing bot detection by leveraging real-user client sessions to report broken CSS selectors.
+- Pivoted DOM change monitoring to a 100% local, privacy-compliant automation workflow (using desktop automation to capture and diff page sources), preserving browser privacy integrity.
