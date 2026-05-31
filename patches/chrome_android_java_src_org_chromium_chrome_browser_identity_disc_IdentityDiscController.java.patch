@@ -1,0 +1,139 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java b/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
+index eabc7302cb..399ab6e65f 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/identity_disc/IdentityDiscController.java
+@@ -180,31 +180,14 @@ public class IdentityDiscController
+ 
+     @Override
+     public ButtonData get(@Nullable Tab tab) {
+-        mIsTabNtp = tab != null && tab.getNativePage() instanceof NewTabPage;
+-        if (!mIsTabNtp) {
+-            mButtonData.setCanShow(false);
+-            return mButtonData;
+-        }
+-
+-        calculateButtonData();
++        // The Identity Disc is intentionally always hidden in this distraction-free
++        // fork. Google sign-in is not supported, so the button serves no purpose.
++        mButtonData.setCanShow(false);
+         return mButtonData;
+     }
+ 
+     private void calculateButtonData() {
+-        if (mProfile == null) {
+-            assert !mButtonData.canShow();
+-            return;
+-        }
+-
+-        ensureProfileDataCache(mProfile);
+-        final @Nullable CoreAccountId accountId =
+-                CoreAccountInfo.getIdFrom(getSignedInAccountInfo());
+-        final @Nullable DisplayableProfileData profileData =
+-                accountId != null ? mProfileDataCache.getById(accountId) : null;
+-
+-        mButtonData.setButtonSpec(
+-                buttonSpecWithDrawableAndDescription(mButtonData.getButtonSpec(), profileData));
+-        mButtonData.setCanShow(true);
++        // Identity Disc is always hidden in this fork — no profile data needed.
+     }
+ 
+     private ButtonSpec buttonSpecWithDrawableAndDescription(
+@@ -407,91 +390,28 @@ public class IdentityDiscController
+     private void setProfile(Profile profile) {
+         mProfile = profile;
+ 
++        // Clean up any previously registered observers.
+         if (mSyncService != null) {
+             mSyncService.removeSyncStateChangedListener(this);
++            mSyncService = null;
+         }
+-
+         if (mIdentityManager != null) {
+             mIdentityManager.removeObserver(this);
++            mIdentityManager = null;
+         }
+-
+         if (mSigninCoordinator != null) {
+             mSigninCoordinator.destroy();
+             mSigninCoordinator = null;
+         }
+ 
+-        if (profile.isOffTheRecord()) {
+-            mIdentityManager = null;
+-            mSyncService = null;
+-        } else {
+-            mIdentityManager = IdentityServicesProvider.get().getIdentityManager(profile);
+-            assumeNonNull(mIdentityManager);
+-            mIdentityManager.addObserver(this);
+-            calculateButtonData();
+-            initializeSigninCoordinator();
+-
+-            mSyncService = SyncServiceFactory.getForProfile(profile);
+-            if (mSyncService != null) {
+-                mSyncService.addSyncStateChangedListener(this);
+-                maybeUpdateIdentityErrorAndBadge();
+-            }
+-
+-            notifyObservers(true);
+-        }
++        // The Identity Disc is always hidden in this fork; skip all profile-data
++        // cache construction, sync observation, and sign-in coordinator setup
++        // since no observer notification will ever make the button visible.
+     }
+ 
+     @VisibleForTesting
+     void onClick() {
+-        if (mProfile == null) {
+-            return;
+-        }
+-        recordIdentityDiscUsed();
+-
+-        Profile originalProfile = mProfile.getOriginalProfile();
+-        if (getSignedInAccountInfo() == null
+-                && UserPrefs.get(originalProfile).getBoolean(Pref.SIGNIN_ALLOWED)) {
+-            AccountPickerBottomSheetStrings bottomSheetStrings =
+-                    new AccountPickerBottomSheetStrings.Builder(
+-                                    mContext.getString(
+-                                            R.string.signin_account_picker_bottom_sheet_title))
+-                            .setSubtitleString(
+-                                    mContext.getString(
+-                                            R.string
+-                                                    .signin_account_picker_bottom_sheet_benefits_subtitle))
+-                            .build();
+-            BottomSheetSigninAndHistorySyncConfig config =
+-                    new BottomSheetSigninAndHistorySyncConfig.Builder(
+-                                    bottomSheetStrings,
+-                                    NoAccountSigninMode.BOTTOM_SHEET,
+-                                    WithAccountSigninMode.DEFAULT_ACCOUNT_BOTTOM_SHEET,
+-                                    HistorySyncConfig.OptInMode.OPTIONAL,
+-                                    mContext.getString(R.string.history_sync_title),
+-                                    mContext.getString(R.string.history_sync_subtitle))
+-                            .signinSurveyType(
+-                                    SigninSurveyController.SigninSurveyType.NTP_SIGNIN_BUTTON)
+-                            .build();
+-            if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
+-                assumeNonNull(mSigninCoordinator).startSigninFlow(config);
+-            } else {
+-                @Nullable Intent intent =
+-                        SigninAndHistorySyncActivityLauncherImpl.get()
+-                                .createBottomSheetSigninIntentOrShowError(
+-                                        mContext,
+-                                        originalProfile,
+-                                        config,
+-                                        SigninAccessPoint.NTP_SIGNED_OUT_ICON);
+-                if (intent != null) {
+-                    mContext.startActivity(intent);
+-                }
+-            }
+-        } else {
+-            SettingsNavigation settingsNavigation =
+-                    SettingsNavigationFactory.createSettingsNavigation();
+-            settingsNavigation.startSettings(mContext);
+-            SigninSurveyController.registerTrigger(
+-                    originalProfile,
+-                    SigninSurveyController.SigninSurveyType.NTP_ACCOUNT_AVATAR_TAP);
+-        }
++        // Identity Disc is always hidden — this handler is never reached.
+     }
+ 
+     @VisibleForTesting

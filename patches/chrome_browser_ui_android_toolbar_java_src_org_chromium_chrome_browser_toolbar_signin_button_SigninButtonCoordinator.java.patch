@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/signin_button/SigninButtonCoordinator.java b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/signin_button/SigninButtonCoordinator.java
+index 6968839969..1431626bea 100644
+--- a/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/signin_button/SigninButtonCoordinator.java
++++ b/chrome/browser/ui/android/toolbar/java/src/org/chromium/chrome/browser/toolbar/signin_button/SigninButtonCoordinator.java
+@@ -208,7 +208,7 @@ public class SigninButtonCoordinator extends ToolbarChildButton implements UrlFo
+ 
+     /** Returns whether the signin button should be visible. */
+     public boolean isShown() {
+-        return mModel.get(SigninButtonProperties.SHOULD_SHOW_ON_PAGE);
++        return false;
+     }
+ 
+     /** Returns the signin button view for drawing. */

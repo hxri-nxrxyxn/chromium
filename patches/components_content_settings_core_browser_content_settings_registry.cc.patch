@@ -1,0 +1,35 @@
+diff --git a/components/content_settings/core/browser/content_settings_registry.cc b/components/content_settings/core/browser/content_settings_registry.cc
+index a7621bcc38..eb87f9edcb 100644
+--- a/components/content_settings/core/browser/content_settings_registry.cc
++++ b/components/content_settings/core/browser/content_settings_registry.cc
+@@ -156,10 +156,10 @@ void ContentSettingsRegistry::Init() {
+            PermissionSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
+ 
+   Register(ContentSettingsType::NOTIFICATIONS, "notifications",
+-           CONTENT_SETTING_ASK, WebsiteSettingsInfo::UNSYNCABLE,
++           CONTENT_SETTING_BLOCK, WebsiteSettingsInfo::UNSYNCABLE,
+            /*allowlisted_primary_schemes=*/{},
+            /*valid_settings=*/
+-           {CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK, CONTENT_SETTING_ASK},
++           {CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK},
+            WebsiteSettingsInfo::REQUESTING_ORIGIN_ONLY_SCOPE,
+            WebsiteSettingsRegistry::DESKTOP |
+                WebsiteSettingsRegistry::PLATFORM_ANDROID,
+@@ -832,6 +832,17 @@ void ContentSettingsRegistry::Init() {
+            WebsiteSettingsRegistry::PLATFORM_CHROMEOS,
+            ContentSettingsInfo::INHERIT_IN_INCOGNITO,
+            PermissionSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
++
++  Register(ContentSettingsType::SUB_APPS_WITHOUT_PROMPTS,
++           "sub-apps-without-prompts", CONTENT_SETTING_ASK,
++           WebsiteSettingsInfo::UNSYNCABLE,
++           /*allowlisted_primary_schemes=*/{},
++           /*valid_settings=*/
++           {CONTENT_SETTING_ALLOW, CONTENT_SETTING_BLOCK, CONTENT_SETTING_ASK},
++           WebsiteSettingsInfo::TOP_ORIGIN_ONLY_SCOPE,
++           WebsiteSettingsRegistry::DESKTOP,
++           ContentSettingsInfo::DONT_INHERIT_IN_INCOGNITO,
++           PermissionSettingsInfo::EXCEPTIONS_ON_SECURE_ORIGINS_ONLY);
+ }
+ 
+ void ContentSettingsRegistry::Register(

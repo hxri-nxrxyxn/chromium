@@ -1,0 +1,68 @@
+diff --git a/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/history_sync/HistorySyncCoordinator.java b/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/history_sync/HistorySyncCoordinator.java
+index 2962b8304b..46eb87da54 100644
+--- a/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/history_sync/HistorySyncCoordinator.java
++++ b/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/history_sync/HistorySyncCoordinator.java
+@@ -71,37 +71,18 @@ public class HistorySyncCoordinator {
+             boolean showEmailInFooter,
+             boolean shouldSignOutOnDecline,
+             @Nullable HistorySyncView view) {
++        delegate.dismissHistorySync(false, false);
+         mActivity = activity;
+         mProfile = profile;
+-        mView = view;
+-
+-        mUseLandscapeLayout = SigninUtils.shouldShowDualPanesHorizontalLayout(activity);
+-        mMediator =
+-                new HistorySyncMediator(
+-                        activity,
+-                        delegate,
+-                        profile,
+-                        config,
+-                        accessPoint,
+-                        showEmailInFooter,
+-                        shouldSignOutOnDecline,
+-                        mUseLandscapeLayout);
+-
+-        setView(view, mUseLandscapeLayout);
+-        RecordHistogram.recordEnumeratedHistogram(
+-                "Signin.HistorySyncOptIn.Started", accessPoint, SigninAccessPoint.MAX_VALUE);
+-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(mProfile);
+-        assumeNonNull(signinManager);
+-        IdentityManager identityManager = signinManager.getIdentityManager();
+-        MinorModeHelper.resolveMinorMode(
+-                identityManager,
+-                assumeNonNull(identityManager.getPrimaryAccountInfo()).getId(),
+-                mMediator::onMinorModeRestrictionStatusUpdated);
++        mView = null;
++        mMediator = null;
+     }
+ 
+     public void destroy() {
+         setView(null, false);
+-        mMediator.destroy();
++        if (mMediator != null) {
++            mMediator.destroy();
++        }
+     }
+ 
+     /**
+@@ -109,7 +90,9 @@ public class HistorySyncCoordinator {
+      * configured to do so on decline.
+      */
+     public void declineAndDismiss() {
+-        mMediator.declineAndDismiss();
++        if (mMediator != null) {
++            mMediator.declineAndDismiss();
++        }
+     }
+ 
+     public @Nullable HistorySyncView getView() {
+@@ -127,7 +110,7 @@ public class HistorySyncCoordinator {
+             mPropertyModelChangeProcessor.destroy();
+             mPropertyModelChangeProcessor = null;
+         }
+-        if (view != null) {
++        if (view != null && mMediator != null) {
+             boolean useAlternateIllustration =
+                     ChromeFeatureList.isEnabled(
+                             ChromeFeatureList.USE_ALTERNATE_HISTORY_SYNC_ILLUSTRATION);

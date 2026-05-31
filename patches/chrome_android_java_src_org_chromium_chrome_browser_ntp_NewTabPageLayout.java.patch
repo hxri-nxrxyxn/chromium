@@ -1,0 +1,65 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageLayout.java b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageLayout.java
+index 2e80189797..61bd7dda69 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageLayout.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageLayout.java
+@@ -7,14 +7,12 @@ package org.chromium.chrome.browser.ntp;
+ import android.content.Context;
+ import android.util.AttributeSet;
+ import android.view.View;
+-import android.view.ViewGroup;
+-import android.view.ViewStub;
+ import android.widget.LinearLayout;
+ 
+-import org.chromium.base.Log;
+ import org.chromium.build.annotations.NullMarked;
+ import org.chromium.build.annotations.Nullable;
+ import org.chromium.chrome.R;
++import org.chromium.chrome.browser.ui.theme.ChromeSemanticColorUtils;
+ 
+ /**
+  * Layout for the new tab page. This positions the page elements in the correct vertical positions.
+@@ -38,8 +36,6 @@ public class NewTabPageLayout extends LinearLayout {
+         void updateActionButtonVisibility();
+     }
+ 
+-    private static final String TAG = "NewTabPageLayout";
+-
+     private @Nullable Delegate mDelegate;
+     private @Nullable View mSearchBoxView;
+ 
+@@ -52,16 +48,9 @@ public class NewTabPageLayout extends LinearLayout {
+     protected void onFinishInflate() {
+         super.onFinishInflate();
+ 
+-        setBackgroundColor(
+-                getResources()
+-                        .getColor(R.color.home_surface_background_color, getContext().getTheme()));
+-
+-        // TODO(crbug.com/347509698): Remove the log statements after fixing the bug.
+-        Log.i(TAG, "NewTabPageLayout.onFinishInflate before insertSiteSectionView");
++        setBackgroundColor(ChromeSemanticColorUtils.getHomeSurfaceBackgroundColor(getContext()));
+ 
+-        initializeSiteSectionView();
+-
+-        Log.i(TAG, "NewTabPageLayout.onFinishInflate after insertSiteSectionView");
++        if (getVisibility() != View.VISIBLE) setVisibility(View.VISIBLE);
+     }
+ 
+     @Override
+@@ -91,16 +80,6 @@ public class NewTabPageLayout extends LinearLayout {
+         }
+     }
+ 
+-    private void initializeSiteSectionView() {
+-        var mvTilesContainerLayout =
+-                (ViewGroup) ((ViewStub) findViewById(R.id.mv_tiles_layout_stub)).inflate();
+-        mvTilesContainerLayout.setVisibility(View.VISIBLE);
+-        // The page contents are initially hidden; otherwise they'll be drawn centered on the
+-        // page before the tiles are available and then jump upwards to make space once the
+-        // tiles are available.
+-        if (getVisibility() != View.VISIBLE) setVisibility(View.VISIBLE);
+-    }
+-
+     /** Sets the delegate instance. */
+     void setDelegate(Delegate delegate) {
+         mDelegate = delegate;

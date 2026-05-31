@@ -1,0 +1,13 @@
+diff --git a/chrome/browser/BUILD.gn b/chrome/browser/BUILD.gn
+index 63c2601cfc..f67ac37156 100644
+--- a/chrome/browser/BUILD.gn
++++ b/chrome/browser/BUILD.gn
+@@ -832,6 +832,8 @@ static_library("browser") {
+     "//chrome/browser/metrics:impl",
+     "//chrome/browser/metrics/structured",
+     "//chrome/browser/navigation_predictor",
++    "//chrome/browser/navigation_policy:shorts_reels_blocker",
++    "//chrome/browser/content_injection:content_injection",
+     "//chrome/browser/navigation_predictor:impl",
+     "//chrome/browser/net",
+     "//chrome/browser/net:impl",

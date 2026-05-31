@@ -1,0 +1,31 @@
+diff --git a/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/GoogleServicesSettings.java b/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/GoogleServicesSettings.java
+index 45f3071a5c..320a1e05c9 100644
+--- a/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/GoogleServicesSettings.java
++++ b/chrome/android/java/src/org/chromium/chrome/browser/sync/settings/GoogleServicesSettings.java
+@@ -114,14 +114,9 @@ public class GoogleServicesSettings extends ChromeBaseSettingsFragment
+ 
+         mAllowSignin = (ChromeSwitchPreference) findPreference(PREF_ALLOW_SIGNIN);
+ 
+-        if (!shouldShowAllowSignIn(getProfile())) {
+-            // Do not display option to allow / disallow sign-in for supervised accounts since
+-            // these require the user to be signed-in and syncing.
+-            mAllowSignin.setVisible(false);
+-        } else {
+-            mAllowSignin.setOnPreferenceChangeListener(this);
+-            mAllowSignin.setManagedPreferenceDelegate(mManagedPreferenceDelegate);
+-        }
++        // Sign-in toggle is intentionally disabled in this distraction-free fork.
++        // Keeping the preference hidden avoids presenting sign-in entry points.
++        mAllowSignin.setVisible(false);
+ 
+         mSearchSuggestions = (ChromeSwitchPreference) findPreference(PREF_SEARCH_SUGGESTIONS);
+         mSearchSuggestions.setOnPreferenceChangeListener(this);
+@@ -295,7 +290,7 @@ public class GoogleServicesSettings extends ChromeBaseSettingsFragment
+     }
+ 
+     private static boolean shouldShowAllowSignIn(Profile profile) {
+-        return !profile.isChild();
++        return false;
+     }
+ 
+     private static boolean shouldShowContextualSearch() {

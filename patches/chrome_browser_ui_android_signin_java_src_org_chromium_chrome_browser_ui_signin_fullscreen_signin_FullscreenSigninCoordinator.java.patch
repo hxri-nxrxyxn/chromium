@@ -1,0 +1,19 @@
+diff --git a/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FullscreenSigninCoordinator.java b/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FullscreenSigninCoordinator.java
+index 1a543131de..26d8c2b4fc 100644
+--- a/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FullscreenSigninCoordinator.java
++++ b/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/fullscreen_signin/FullscreenSigninCoordinator.java
+@@ -205,12 +205,12 @@ public class FullscreenSigninCoordinator implements IdentityManager.Observer {
+ 
+     /** Continue the sign-in process with the currently selected account. */
+     public void continueSignIn() {
+-        mMediator.proceedWithSignIn();
++        mDelegate.advanceToNextPage();
+     }
+ 
+     /** Abandon the sign-in process and dismiss the sign-in page. */
+     public void cancelSignInAndDismiss() {
+-        mMediator.dismiss();
++        mDelegate.advanceToNextPage();
+     }
+ 
+     public Drawable getProfilePictureForTesting() {

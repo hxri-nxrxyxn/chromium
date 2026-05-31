@@ -1,0 +1,13 @@
+diff --git a/components/signin/internal/identity_manager/primary_account_manager.cc b/components/signin/internal/identity_manager/primary_account_manager.cc
+index e6ef4ee147..24f0041a12 100644
+--- a/components/signin/internal/identity_manager/primary_account_manager.cc
++++ b/components/signin/internal/identity_manager/primary_account_manager.cc
+@@ -368,7 +368,7 @@ void PrimaryAccountManager::RegisterProfilePrefs(PrefRegistrySimple* registry) {
+       prefs::kGoogleServicesSyncingUsernameMigratedToSignedIn, std::string());
+   registry->RegisterIntegerPref(prefs::kGoogleServicesSyncingUserMigrationType,
+                                 /*SyncToSigninMigrationType::kUnknown=*/0);
+-  registry->RegisterBooleanPref(prefs::kSigninAllowed, true);
++  registry->RegisterBooleanPref(prefs::kSigninAllowed, false);
+   registry->RegisterBooleanPref(prefs::kSignedInWithCredentialProvider, false);
+   registry->RegisterBooleanPref(prefs::kExplicitBrowserSignin, false);
+   registry->RegisterBooleanPref(
