@@ -31,19 +31,23 @@ image:
 
 # ── Phase 1: Fetch source (~30 min) ─────────────────────────────────────
 
+CHROMIUM_VERSION ?= 149.0.7827.84
+CHROMIUM_TAG ?= refs/tags/$(CHROMIUM_VERSION)
+
 LOG_DIR ?= build-logs
 LOG_FILE ?= $(LOG_DIR)/fetch.log
 
 .PHONY: fetch
 fetch: | $(LOG_DIR)
 	@mkdir -p checkout
-	@echo "━━━ Fetching Chromium source for Android ━━━" | tee -a $(LOG_FILE)
+	@echo "━━━ Fetching Chromium $(CHROMIUM_VERSION) (stable) for Android ━━━" | tee -a $(LOG_FILE)
 	@echo "     Log: $(abspath $(LOG_FILE))" | tee -a $(LOG_FILE)
 	docker compose run --rm builder bash -c "\
 		cd /checkout && \
-		fetch --nohooks --no-history android 2>&1 \
+		fetch --nohooks --no-history android 2>&1 && \
+		gclient sync --revision src@$(CHROMIUM_TAG) 2>&1 \
 	" | tee -a $(LOG_FILE)
-	@echo "✓ Source fetched to checkout/" | tee -a $(LOG_FILE)
+	@echo "✓ Source fetched (pinned to $(CHROMIUM_VERSION)) to checkout/" | tee -a $(LOG_FILE)
 
 $(LOG_DIR):
 	@mkdir -p $(LOG_DIR)
