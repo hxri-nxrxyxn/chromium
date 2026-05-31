@@ -4,35 +4,25 @@
 Usage:
     apply-patches.py /path/to/chromium/src /path/to/patches/dir
 
-The patches directory must contain a ``source-files/`` sub-directory that
-mirrors the Chromium ``src/`` layout.  All files inside ``source-files/`` are
-copied verbatim into the matching location inside ``chromium_src``.
+If a `patches/` directory containing `.patch` files exists in your repository,
+this script copies only the new files verbatim and applies the standard patches
+using `git apply`.
 
-Two existing Chromium source files are then surgically modified in-place:
-
-  1. chrome/browser/chrome_content_browser_client_navigation_throttles.cc
-       - Adds ``#include`` directives for the new modules.
-       - Registers ``ShortsReelsBlockerThrottle``, ``ShortsReelsBlockerTabHelper``,
-         and ``ContentInjectionManager`` in
-         ``CreateAndAddChromeThrottlesForNavigation()``.
-
-  2. chrome/browser/BUILD.gn
-       - Adds ``//chrome/browser/navigation_policy:shorts_reels_blocker`` and
-         ``//chrome/browser/content_injection:content_injection`` to the main
-         browser target's ``deps`` list.
+Otherwise, it falls back to copying all files verbatim and performing surgical
+string replacements on registration files in the checkout.
 """
 
 import argparse
+import glob
 import os
 import shutil
+import subprocess
 import sys
-
 
 def die(message: str) -> None:
     """Print an error message to stderr and exit with code 1."""
     print(f"error: {message}", file=sys.stderr)
     sys.exit(1)
-
 
 def read_file(path: str) -> str:
     """Read *path* and return its contents, or die with a helpful message."""
@@ -45,7 +35,6 @@ def read_file(path: str) -> str:
     except PermissionError:
         die(f"permission denied reading {path!r}")
 
-
 def write_file(path: str, content: str) -> None:
     """Write *content* to *path*, or die with a helpful message."""
     try:
@@ -54,10 +43,24 @@ def write_file(path: str, content: str) -> None:
     except PermissionError:
         die(f"permission denied writing {path!r}")
 
+def copy_new_files_only(source_files_dir: str, chromium_src: str) -> None:
+    """Recursively copy only brand new files into *chromium_src* (skips files that exist)."""
+    print("━━━ Copying brand-new source files ━━━")
+    for root, _dirs, files in os.walk(source_files_dir):
+        for fname in files:
+            src_path = os.path.join(root, fname)
+            rel_path = os.path.relpath(src_path, source_files_dir)
+            dest_path = os.path.join(chromium_src, rel_path)
+            
+            # Only copy if the file does not already exist in Chromium checkout
+            if not os.path.exists(dest_path):
+                os.makedirs(os.path.dirname(dest_path), exist_ok=True)
+                shutil.copy2(src_path, dest_path)
+                print(f"  ✓ Copied new file: {rel_path}")
 
-def copy_source_files(source_files_dir: str, chromium_src: str) -> None:
+def copy_all_source_files(source_files_dir: str, chromium_src: str) -> None:
     """Recursively copy every file under *source_files_dir* into *chromium_src*."""
-    print("━━━ Copying new source files ━━━")
+    print("━━━ Copying all source files verbatim (Legacy Mode) ━━━")
     for root, _dirs, files in os.walk(source_files_dir):
         for fname in files:
             src_path = os.path.join(root, fname)
@@ -67,54 +70,78 @@ def copy_source_files(source_files_dir: str, chromium_src: str) -> None:
             shutil.copy2(src_path, dest_path)
             print(f"  ✓ Copied  {rel_path}")
 
+def apply_git_patches(patches_dir: str, chromium_src: str) -> None:
+    """Apply all standard git patch files inside patches_dir using git apply."""
+    print("\n━━━ Applying standard git patches ━━━")
+    patch_files = sorted(glob.glob(os.path.join(patches_dir, "*.patch")))
+    
+    if not patch_files:
+        print("  - No patch files found in patches/ directory.")
+        return
+
+    for patch in patch_files:
+        patch_name = os.path.basename(patch)
+        print(f"  Applying {patch_name}...")
+        try:
+            subprocess.run(
+                ["git", "apply", "--whitespace=nowarn", "--recount", patch],
+                cwd=chromium_src,
+                check=True,
+                capture_output=True,
+                text=True
+            )
+            print(f"    ✓ Applied successfully")
+        except subprocess.CalledProcessError as e:
+            print(f"    ❌ Failed to apply {patch_name}")
+            print(f"    Error: {e.stderr}")
+            print("    Attempting to apply with reject files (--reject)...")
+            try:
+                subprocess.run(
+                    ["git", "apply", "--whitespace=nowarn", "--recount", "--reject", patch],
+                    cwd=chromium_src,
+                    check=True,
+                    capture_output=True,
+                    text=True
+                )
+                print(f"    ✓ Applied with rejects (.rej files created)")
+            except subprocess.CalledProcessError as err_reject:
+                die(f"Could not apply patch {patch_name} even with rejects.\n"
+                    f"Error: {err_reject.stderr}")
 
 def patch_throttles_file(chromium_src: str) -> None:
-    """Add includes and throttle/tab-helper registration to the navigation throttles file."""
-    print("\n━━━ Patching navigation throttles file ━━━")
-
+    """Add includes and throttle/tab-helper registration (Legacy Mode)."""
+    print("\n━━━ Patching navigation throttles file (Legacy Mode) ━━━")
     rel = "chrome/browser/chrome_content_browser_client_navigation_throttles.cc"
     path = os.path.join(chromium_src, rel)
     content = read_file(path)
     modified = False
 
-    # ── 1a. Add content_injection include ────────────────────────────────────
-    include_injection = (
-        '#include "chrome/browser/content_injection/content_injection_manager.h"'
-    )
+    include_injection = '#include "chrome/browser/content_injection/content_injection_manager.h"'
     if include_injection in content:
         print("  - content_injection include already present, skipping")
     else:
         anchor = '#include "chrome/browser/data_sharing/data_sharing_navigation_throttle.h"'
         if anchor not in content:
-            die(f"anchor not found in {rel!r}:\n  {anchor!r}\n"
-                "  The Chromium tree may be a different version than expected.")
+            die(f"anchor not found in {rel!r}:\n  {anchor!r}")
         content = content.replace(anchor, anchor + "\n" + include_injection)
         modified = True
         print("  ✓ Added content_injection #include")
 
-    # ── 1b. Add shorts_reels_blocker include ──────────────────────────────────
-    include_blocker = (
-        '#include "chrome/browser/navigation_policy/shorts_reels_blocker.h"'
-    )
+    include_blocker = '#include "chrome/browser/navigation_policy/shorts_reels_blocker.h"'
     if include_blocker in content:
         print("  - shorts_reels_blocker include already present, skipping")
     else:
-        content = content.replace(
-            include_injection,
-            include_injection + "\n" + include_blocker,
-        )
+        content = content.replace(include_injection, include_injection + "\n" + include_blocker)
         modified = True
         print("  ✓ Added shorts_reels_blocker #include")
 
-    # ── 1c. Register throttle + tab-helper + injection manager ────────────────
     registration_sentinel = "ShortsReelsBlockerThrottle::CreateForNavigation"
     if registration_sentinel in content:
         print("  - Throttle registration already present, skipping")
     else:
         anchor = "page_load_metrics::MetricsNavigationThrottle::CreateAndAdd(registry);"
         if anchor not in content:
-            die(f"anchor not found in {rel!r}:\n  {anchor!r}\n"
-                "  The Chromium tree may be a different version than expected.")
+            die(f"anchor not found in {rel!r}:\n  {anchor!r}")
         insert = (
             "    // Block short-form video feed URLs (YouTube Shorts, Instagram Reels,\n"
             "    // Facebook Reels/Watch, Reddit Reels, X Reels, LinkedIn Reels).\n"
@@ -137,11 +164,9 @@ def patch_throttles_file(chromium_src: str) -> None:
     if modified:
         write_file(path, content)
 
-
 def patch_build_gn(chromium_src: str) -> None:
-    """Add source_set deps to chrome/browser/BUILD.gn."""
-    print("\n━━━ Patching chrome/browser/BUILD.gn ━━━")
-
+    """Add source_set deps to chrome/browser/BUILD.gn (Legacy Mode)."""
+    print("\n━━━ Patching chrome/browser/BUILD.gn (Legacy Mode) ━━━")
     path = os.path.join(chromium_src, "chrome/browser/BUILD.gn")
     content = read_file(path)
     gn_modified = False
@@ -155,8 +180,7 @@ def patch_build_gn(chromium_src: str) -> None:
 
     anchor = '"//chrome/browser/navigation_predictor",'
     if anchor not in content:
-        die(f"anchor not found in chrome/browser/BUILD.gn:\n  {anchor!r}\n"
-            "  The Chromium tree may be a different version than expected.")
+        die(f"anchor not found in chrome/browser/BUILD.gn:\n  {anchor!r}")
 
     insert_parts = []
     if blocker_dep not in content:
@@ -174,7 +198,6 @@ def patch_build_gn(chromium_src: str) -> None:
     if gn_modified:
         write_file(path, content)
 
-
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=__doc__,
@@ -188,10 +211,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "patches_dir",
         metavar="PATCHES_DIR",
-        help="Path to this patches repository (the directory containing apply-patches.py).",
+        help="Path to this patches repository.",
     )
     return parser.parse_args()
-
 
 def validate_args(args: argparse.Namespace) -> None:
     if not os.path.isdir(args.chromium_src):
@@ -203,19 +225,29 @@ def validate_args(args: argparse.Namespace) -> None:
     if not os.path.isdir(source_files):
         die(f"source-files/ directory not found inside PATCHES_DIR: {source_files!r}")
 
-
 def main() -> None:
     args = parse_args()
     validate_args(args)
 
     source_files_dir = os.path.join(args.patches_dir, "source-files")
+    patches_folder = os.path.join(args.patches_dir, "patches")
 
-    copy_source_files(source_files_dir, args.chromium_src)
-    patch_throttles_file(args.chromium_src)
-    patch_build_gn(args.chromium_src)
+    # If the patches directory exists and contains at least one .patch file, use Patch Mode
+    has_patches = os.path.isdir(patches_folder) and any(
+        fname.endswith(".patch") for fname in os.listdir(patches_folder)
+    )
+
+    if has_patches:
+        print("💡 Standard Patch Mode detected.")
+        copy_new_files_only(source_files_dir, args.chromium_src)
+        apply_git_patches(patches_folder, args.chromium_src)
+    else:
+        print("⚠️ Legacy Copy-and-Replace Mode detected (No .patch files found).")
+        copy_all_source_files(source_files_dir, args.chromium_src)
+        patch_throttles_file(args.chromium_src)
+        patch_build_gn(args.chromium_src)
 
     print("\n━━━ All patches applied successfully ━━━")
-
 
 if __name__ == "__main__":
     main()
