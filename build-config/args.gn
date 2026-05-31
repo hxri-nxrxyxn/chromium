@@ -1,0 +1,9 @@
+target_os = "android"
+target_cpu = "arm64"
+symbol_level = 0
+blink_symbol_level = 0
+v8_symbol_level = 0
+is_debug = false
+treat_warnings_as_errors = false
+android_static_analysis = "off"
+dcheck_always_on = false

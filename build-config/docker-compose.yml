@@ -1,0 +1,23 @@
+version: "3.9"
+
+services:
+  builder:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: chromium-android-builder
+    container_name: chromium-android
+    volumes:
+      # depot_tools — checked out once on host, shared into container
+      - ./depot_tools:/depot_tools
+      # Chromium source checkout — persists on host, survives container teardown
+      - ./checkout:/checkout
+    working_dir: /checkout/src
+    stdin_open: true   # -i (interactive)
+    tty: true          # -t (pseudo-TTY)
+    shm_size: 2g       # Chromium's linker needs substantial shared memory
+    environment:
+      - DEBIAN_FRONTEND=noninteractive
+      - DEPOT_TOOLS_UPDATE=0  # speed up: skip depot_tools self-update on every run
+    cap_add:
+      - SYS_PTRACE     # debugging support
