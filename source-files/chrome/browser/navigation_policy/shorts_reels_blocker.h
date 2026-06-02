@@ -106,4 +106,14 @@ class ShortsReelsBlockerTabHelper final
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 };
 
+// Convenience wrapper that registers the navigation throttle, SPA TabHelper,
+// and content injection manager for a navigation. Call once per navigation
+// from CreateAndAddChromeThrottlesForNavigation() to minimize merge-conflict
+// surface in the upstream file.
+namespace distraction_blocker {
+void RegisterThrottlesAndHelpers(
+    content::NavigationThrottleRegistry& registry,
+    content::NavigationHandle& handle);
+}  // namespace distraction_blocker
+
 #endif  // CHROME_BROWSER_NAVIGATION_POLICY_SHORTS_REELS_BLOCKER_H_

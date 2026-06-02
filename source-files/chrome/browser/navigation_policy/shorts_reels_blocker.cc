@@ -11,6 +11,7 @@
 #include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "base/strings/stringprintf.h"
+#include "chrome/browser/content_injection/content_injection_manager.h"
 #include "chrome/browser/navigation_policy/platform_rules/all_block_rules.h"
 #include "chrome/common/webui_url_constants.h"
 #include "content/public/browser/navigation_controller.h"
@@ -289,3 +290,25 @@ void ShortsReelsBlockerTabHelper::MaybeBlockURL(const GURL& url) {
 
   ShortsReelsBlockerThrottle::NavigateToBlockPage(web_contents());
 }
+
+// ---------------------------------------------------------------------------
+// Convenience wrapper — call once per navigation from upstream throttle file.
+// Keeps merge-conflict surface minimal (one #include + one call).
+// ---------------------------------------------------------------------------
+namespace distraction_blocker {
+
+void RegisterThrottlesAndHelpers(
+    content::NavigationThrottleRegistry& registry,
+    content::NavigationHandle& handle) {
+  registry.AddThrottle(
+      ShortsReelsBlockerThrottle::CreateForNavigation(registry));
+
+  content::WebContents* web_contents = handle.GetWebContents();
+  if (web_contents) {
+    ShortsReelsBlockerTabHelper::CreateForWebContents(web_contents);
+    content_injection::ContentInjectionManager::CreateForWebContents(
+        web_contents);
+  }
+}
+
+}  // namespace distraction_blocker
