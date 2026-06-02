@@ -1,29 +1,31 @@
-diff --git a/chrome/android/java/res/layout/new_tab_page_layout.xml b/chrome/android/java/res/layout/new_tab_page_layout.xml
-index 2c9cc4ce6b..c37d228ebb 100644
---- a/chrome/android/java/res/layout/new_tab_page_layout.xml
-+++ b/chrome/android/java/res/layout/new_tab_page_layout.xml
-@@ -27,59 +27,9 @@ found in the LICENSE file.
-         android:layout="@layout/logo_view_layout" />
- 
+--- /tmp/orig_layout.xml	2026-06-02 08:29:03.114323194 +0000
++++ /sf/chrome/android/java/res/layout/new_tab_page_layout.xml	2026-06-02 08:23:38.074906971 +0000
+@@ -29,51 +29,51 @@
      <!-- Search box -->
--    <include layout="@layout/fake_search_box_layout"/>
--
+     <include layout="@layout/fake_search_box_layout"/>
+ 
 -    <!-- Composeplate / "AI Mode" -->
--    <ViewStub
--        android:id="@+id/composeplate_view_stub"
++    <!-- Composeplate / "AI Mode" — HIDDEN: distraction-free NTP -->
+     <ViewStub
+         android:id="@+id/composeplate_view_stub"
 -        android:layout_width="match_parent"
 -        android:layout_height="@dimen/composeplate_view_height"
 -        android:layout_marginTop="@dimen/composeplate_view_margin_top"
 -        android:layout_marginBottom="@dimen/ntp_section_bottom_margin"
 -        android:layout_marginStart="@dimen/mvt_container_lateral_margin"
 -        android:layout_marginEnd="@dimen/mvt_container_lateral_margin"
--        android:layout="@layout/composeplate_view_layout"
++        android:layout_width="0dp"
++        android:layout_height="0dp"
++        android:visibility="gone"
+         android:layout="@layout/composeplate_view_layout"
 -        />
--
++        tools:visibility="gone" />
+ 
 -    <!-- Most Visited Tiles -->
--    <ViewStub
--        android:id="@+id/mv_tiles_layout_stub"
--        android:inflatedId="@+id/mv_tiles_container"
++    <!-- Most Visited Tiles — HIDDEN: distraction-free NTP -->
+     <ViewStub
+         android:id="@+id/mv_tiles_layout_stub"
+         android:inflatedId="@+id/mv_tiles_container"
 -        android:layout_width="match_parent"
 -        android:layout_height="wrap_content"
 -        android:layout_marginTop="@dimen/ntp_section_top_margin"
@@ -31,36 +33,50 @@ index 2c9cc4ce6b..c37d228ebb 100644
 -        android:layout_marginLeft="@dimen/mvt_container_lateral_margin"
 -        android:layout_marginRight="@dimen/mvt_container_lateral_margin"
 -        android:layout="@layout/mv_tiles_layout" />
--
++        android:layout_width="0dp"
++        android:layout_height="0dp"
++        android:visibility="gone"
++        android:layout="@layout/mv_tiles_layout"
++        tools:visibility="gone" />
+ 
++    <!-- Sign-in promo — HIDDEN: distraction-free NTP -->
      <ViewStub
--        android:id="@+id/signin_promo_view_container_stub"
-+        android:id="@+id/search_box_stub"
-         android:layout_width="match_parent"
+         android:id="@+id/signin_promo_view_container_stub"
+-        android:layout_width="match_parent"
 -        android:layout_height="wrap_content"
 -        android:layout="@layout/signin_promo_view_new_tab_page" />
--
--    <ViewStub
--        android:id="@+id/home_modules_recycler_view_stub"
++        android:layout_width="0dp"
++        android:layout_height="0dp"
++        android:visibility="gone"
++        android:layout="@layout/signin_promo_view_new_tab_page"
++        tools:visibility="gone" />
+ 
++    <!-- Home modules / Discover feed — HIDDEN: distraction-free NTP -->
+     <ViewStub
+         android:id="@+id/home_modules_recycler_view_stub"
 -        android:layout_width="match_parent"
 -        android:layout_height="match_parent"
 -        android:layout_marginTop="@dimen/ntp_section_top_margin"
 -        android:layout_marginBottom="@dimen/ntp_section_bottom_margin"
--        android:layout="@layout/home_modules_recycler_view_layout"
++        android:layout_width="0dp"
++        android:layout_height="0dp"
++        android:visibility="gone"
+         android:layout="@layout/home_modules_recycler_view_layout"
 -        />
-+        android:layout_height="wrap_content" />
++        tools:visibility="gone" />
  
 -    <!-- Single tab card -->
--    <ViewStub
--        android:id="@+id/tab_switcher_module_container_stub"
++    <!-- Single tab card — HIDDEN: distraction-free NTP -->
+     <ViewStub
+         android:id="@+id/tab_switcher_module_container_stub"
 -        android:layout_width="match_parent"
 -        android:layout_height="match_parent"
 -        android:layout="@layout/tab_switcher_module_container" />
--
--    <!-- Spacer for when there is no search provider logo. -->
--    <View
--        android:id="@+id/no_search_logo_spacer"
--        android:layout_width="match_parent"
--        android:layout_height="0dp"
--        android:layout_weight="1"
--        android:visibility="gone" />
- </org.chromium.chrome.browser.ntp.NewTabPageLayout>
++        android:layout_width="0dp"
++        android:layout_height="0dp"
++        android:visibility="gone"
++        android:layout="@layout/tab_switcher_module_container"
++        tools:visibility="gone" />
+ 
+     <!-- Spacer for when there is no search provider logo. -->
+     <View

@@ -1,84 +1,18 @@
-diff --git a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageCoordinator.java b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageCoordinator.java
-index 9ed2ac7ce4..f16992d4e3 100644
---- a/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageCoordinator.java
-+++ b/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageCoordinator.java
-@@ -23,6 +23,7 @@ import androidx.annotation.VisibleForTesting;
- import org.chromium.base.Callback;
- import org.chromium.base.CallbackController;
- import org.chromium.base.Log;
-+import org.chromium.base.TimeUtils;
- import org.chromium.base.TraceEvent;
- import org.chromium.base.supplier.MonotonicObservableSupplier;
- import org.chromium.base.supplier.ObservableSuppliers;
-@@ -58,6 +59,7 @@ import org.chromium.chrome.browser.ntp_customization.NtpCustomizationConfigManag
- import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinator;
- import org.chromium.chrome.browser.ntp_customization.NtpCustomizationCoordinatorFactory;
- import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
-+import org.chromium.chrome.browser.ntp_customization.theme.NtpCustomizationPromoManager;
- import org.chromium.chrome.browser.omnibox.SearchEngineUtils;
- import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchBoxHintTextObserver;
- import org.chromium.chrome.browser.omnibox.SearchEngineUtils.SearchEngineIconObserver;
-@@ -110,6 +112,8 @@ import java.util.function.Supplier;
- @NullMarked
- public class NewTabPageCoordinator implements ModuleDelegateHost {
-     private static final String TAG = "NewTabPageLayout";
-+    // Counts of the number of NTPs have been visible to users.
-+    private static int sCount;
- 
-     private final NewTabPageManager mManager;
-     private final Activity mActivity;
-@@ -149,6 +153,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-     private @Nullable ViewGroup mHomeModulesContainer;
-     private SetupListManager.@Nullable Observer mSetupListObserver;
-     private @Nullable Point mContextMenuStartPosition;
-+    private @Nullable NtpCustomizationCoordinator mNtpCustomizationCoordinator;
- 
-     /**
-      * Whether the tiles shown in the layout have finished loading. With {@link #mHasShownView},
-@@ -187,9 +192,9 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-     private @Nullable FeedSurfaceScrollDelegate mScrollDelegate;
-     private @Nullable Callback<Logo> mOnLogoAvailableCallback;
- 
--    // mIsComposeplateEnabled is null before checking whether to initialize composeplate view in
-+    // mCanShowComposeplateButton is null before checking whether to initialize composeplate view in
-     // NewTabPageCoordinator#initialize().
--    private @Nullable Boolean mIsComposeplateEnabled;
-+    private @Nullable Boolean mCanShowComposeplateButton;
-     private boolean mIsComposeplatePolicyEnabled;
-     private boolean mIsComposeplateViewInitialized;
-     private @Nullable Supplier<GURL> mComposeplateUrlSupplier;
-@@ -287,6 +292,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-                     }
-                 };
-         mModel.set(NewTabPageLayoutProperties.DELEGATE, mLayoutDelegate);
-+        sCount++;
-     }
- 
-     /**
-@@ -333,10 +339,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-             mUiConfig.updateDisplayStyle();
-         }
- 
-+        ViewStub searchBoxStub = mNewTabPageLayout.findViewById(R.id.search_box_stub);
-         mNtpSearchBox =
-                 NtpSearchBoxFactory.createSearchBox(
-                         mActivity,
--                        mNewTabPageLayout,
-+                        searchBoxStub,
-                         mIsTablet,
-                         lifecycleDispatcher,
-                         mProfile.isOffTheRecord(),
-@@ -348,8 +355,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
+--- /tmp/orig_coordinator.java	2026-06-02 08:29:03.490322089 +0000
++++ /sf/chrome/android/java/src/org/chromium/chrome/browser/ntp/NewTabPageCoordinator.java	2026-06-02 08:23:38.074906971 +0000
+@@ -348,8 +348,9 @@
          updateSearchBoxTwoSideMargin();
          initializeLogoCoordinator();
          setSearchProviderInfo(searchProviderHasLogo, searchProviderIsGoogle);
 -        initializeMostVisitedTilesCoordinator(
 -                mProfile, lifecycleDispatcher, tileGroupDelegate, touchEnabledDelegate);
-+        // SKIPPED: Most Visited Tiles removed from NTP
++        // SKIPPED: Most Visited Tiles removed from NTP (v24)
++        // initializeMostVisitedTilesCoordinator(
++        //         mProfile, lifecycleDispatcher, tileGroupDelegate, touchEnabledDelegate);
  
          mSearchEngineIconObserver =
                  (newIcon) -> assumeNonNull(mNtpSearchBox).setSearchEngineIcon(newIcon);
-@@ -358,13 +364,8 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
+@@ -358,13 +359,16 @@
  
          initializeSearchBoxTextView();
  
@@ -87,121 +21,38 @@ index 9ed2ac7ce4..f16992d4e3 100644
 -        if (assumeNonNull(mIsComposeplateEnabled)) {
 -            initializeComposeplate();
 -        }
--
++        // SKIPPED: Composeplate removed from NTP (v24)
++        mIsComposeplateEnabled = false;
++        // initializeComposeplateFlags(mProfile);
++        // mNtpSearchBox.setIsFuseboxEligible(Boolean.TRUE.equals(mIsComposeplateEnabled));
++        // if (assumeNonNull(mIsComposeplateEnabled)) {
++        //     initializeComposeplate();
++        // }
+ 
 -        initializeHomeModules();
-+        // SKIPPED: Composeplate, Home Modules, and Sign-in Promo removed from NTP
-+        mCanShowComposeplateButton = false;
++        // SKIPPED: Home modules removed from NTP (v24)
++        // initializeHomeModules();
  
          // This should be called after both mNtpSearchBox and mComposeplateCoordinator are
          // initialized.
-@@ -376,9 +377,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
+@@ -376,9 +380,10 @@
  
          updateActionButtonVisibility();
          initializeLayoutChangeListener();
 -        if (SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
 -            initializeSigninPromoCoordinator();
 -        }
-+        // SKIPPED: Sign-in promo removed from NTP
++        // SKIPPED: Sign-in promo removed from NTP (v24)
++        // if (SigninFeatureMap.isEnabled(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)) {
++        //     initializeSigninPromoCoordinator();
++        // }
  
          // Initialize Searchbox observers
          mSearchBoxHintTextObserver = this::onSearchBoxHintTextChanged;
-@@ -394,7 +393,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         Resources resources = mActivity.getResources();
-         int searchBoxHeight =
-                 NtpCustomizationUtils.getSearchBoxHeight(
--                        resources, assumeNonNull(mIsComposeplateEnabled));
-+                        resources, assumeNonNull(mCanShowComposeplateButton));
-         if (mNtpSearchBox != null) {
-             mNtpSearchBox.setHeight(searchBoxHeight);
-         }
-@@ -488,33 +487,13 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-     }
- 
-     private void initializeComposeplateFlags(Profile profile) {
--        mIsComposeplateEnabled = ComposeplateUtils.isComposeplateEnabled(profile);
-+        mCanShowComposeplateButton = ComposeplateUtils.canShowComposeplateButtonOnNtp(profile);
-         mIsComposeplatePolicyEnabled =
--                mIsComposeplateEnabled && ComposeplateUtils.isEnabledByPolicy(profile);
-+                mCanShowComposeplateButton && ComposeplateUtils.isEnabledByPolicy(profile);
-     }
- 
-     private void initializeComposeplate() {
--        if (mIsComposeplateViewInitialized) return;
--
--        mIsComposeplateViewInitialized = true;
--
--        boolean shouldApplyWhiteBackgroundOnSearchBox =
--                NtpCustomizationUtils.shouldApplyWhiteBackgroundOnSearchBox();
--
--        ViewStub composeplateViewStub = mNewTabPageLayout.findViewById(R.id.composeplate_view_stub);
--        ViewGroup composeplateView = (ViewGroup) composeplateViewStub.inflate();
--        mComposeplateCoordinator = new ComposeplateCoordinator(composeplateView, mProfile);
--        mComposeplateCoordinator.setIncognitoClickListener(this::onIncognitoButtonClicked);
--        // Don't log click metrics in this listener, since the mComposeplateCoordinator will
--        // log.
--        mComposeplateCoordinator.setComposeplateButtonClickListener(
--                this::onComposeplateButtonClicked);
--
--        if (shouldApplyWhiteBackgroundOnSearchBox) {
--            // It is safe to call mComposeplateCoordinator.applyWhiteBackground() again since it is
--            // no-op if the white background has been applied.
--            mComposeplateCoordinator.applyWhiteBackground(/* apply= */ true);
--        }
-+        // SKIPPED: Composeplate removed from NTP
-     }
- 
-     private void onComposeplateButtonClicked(View view) {
-@@ -610,40 +589,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-             ActivityLifecycleDispatcher activityLifecycleDispatcher,
-             TileGroup.Delegate tileGroupDelegate,
-             TouchEnabledDelegate touchEnabledDelegate) {
--        View mvTilesContainerLayout = mNewTabPageLayout.findViewById(R.id.mv_tiles_container);
--        assert mvTilesContainerLayout != null;
--
--        mMostVisitedTilesCoordinator =
--                new MostVisitedTilesCoordinator(
--                        mActivity,
--                        activityLifecycleDispatcher,
--                        mvTilesContainerLayout,
--                        () -> mSnapshotTileGridChanged = true,
--                        () -> {
--                            if (mUrlFocusChangePercent == 1f) mTileCountChanged = true;
--                        });
--
--        mMostVisitedTilesCoordinator.initWithNative(
--                profile, mManager, tileGroupDelegate, touchEnabledDelegate);
--        mMostVisitedTilesCoordinator.updateMvtVisibility();
-+        // SKIPPED: Most Visited Tiles removed from NTP
-     }
- 
-     private void initializeSigninPromoCoordinator() {
--        ViewStub signinPromoViewContainerStub =
--                mNewTabPageLayout.findViewById(R.id.signin_promo_view_container_stub);
--        mSigninPromoCoordinator =
--                new NtpSigninPromoCoordinator(
--                        mWindowAndroid,
--                        mActivity,
--                        mProfile,
--                        mActivityResultTracker,
--                        SigninAndHistorySyncActivityLauncherImpl.get(),
--                        mBottomSheetController,
--                        mModalDialogManager,
--                        mSnackbarManager,
--                        DeviceLockActivityLauncherImpl.get(),
--                        signinPromoViewContainerStub,
--                        SetupListModuleUtils::isSetupListActive);
-+        // SKIPPED: Sign-in promo removed from NTP
-     }
- 
-     /** Updates the search box when the parent view's scroll position is changed. */
-@@ -749,27 +699,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
- 
-         // Skips if the flag hasn't been initialized since the initialization of the following
-         // components will be called again in #initialize().
--        if (mIsComposeplateEnabled != null) {
--            // when mSearchProviderIsGoogle is changed, mIsComposeplateEnabled might be changed too,
--            // recalculate its value.
--            if (isSearchProviderIsGoogleChanged) {
+@@ -753,22 +758,18 @@
+             // when mSearchProviderIsGoogle is changed, mIsComposeplateEnabled might be changed too,
+             // recalculate its value.
+             if (isSearchProviderIsGoogleChanged) {
 -                boolean previousIsComposeplateEnabled = mIsComposeplateEnabled;
 -                initializeComposeplateFlags(mProfile);
 -                if (!previousIsComposeplateEnabled
@@ -218,138 +69,18 @@ index 9ed2ac7ce4..f16992d4e3 100644
 -                    // Updates the composeplate view's visibility.
 -                    updateActionButtonVisibility();
 -                }
--            }
-+        if (mCanShowComposeplateButton != null) {
-+            // When mSearchProviderIsGoogle is changed, mCanShowComposeplateButton might be changed
-+            // too, recalculate its value.
-+            // SKIPPED: Composeplate removed from NTP
++                // SKIPPED: Composeplate flag refresh + lazy-init removed (v24)
++                // boolean previousIsComposeplateEnabled = mIsComposeplateEnabled;
++                // initializeComposeplateFlags(mProfile);
++                // if (!previousIsComposeplateEnabled
++                //         && mIsComposeplateEnabled
++                //         && mComposeplateCoordinator == null) {
++                //     initializeComposeplate();
++                // }
++                // if (previousIsComposeplateEnabled != mIsComposeplateEnabled) {
++                //     setSearchBoxHeightBoundsVerticalInset();
++                //     updateActionButtonVisibility();
++                // }
+             }
          }
  
-         onUrlFocusAnimationChanged();
-@@ -960,6 +893,10 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         if (!mHasShownView) {
-             mHasShownView = true;
-             onInitializationProgressChanged();
-+            if (NtpCustomizationPromoManager.canTriggerCustomizationBottomSheet(
-+                    mWindowAndroid, mIsTablet, sCount)) {
-+                triggerCustomizationBottomSheet();
-+            }
-             TraceEvent.instant("NewTabPageSearchAvailable");
-         }
-     }
-@@ -974,7 +911,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         // Skips now if the composeplate flag hasn't been initialized. This prevents logging the
-         // impression metrics incorrectly due to the status of whether to show the composeplate
-         // button hasn't been initialized.
--        if (mIsComposeplateEnabled == null) return;
-+        if (mCanShowComposeplateButton == null) return;
- 
-         mNtpSearchBox.setVoiceSearchButtonVisibility(shouldShowVoiceSearchButton);
-         mNtpSearchBox.setLensButtonVisibility(shouldShowLensButton);
-@@ -983,7 +920,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         // visibility.
-         if (mComposeplateCoordinator != null) {
-             shouldShowComposeplateButton =
--                    mIsComposeplateEnabled
-+                    mCanShowComposeplateButton
-                             && mSearchProviderIsGoogle
-                             && IncognitoUtils.isIncognitoModeEnabled(mProfile);
-             mComposeplateCoordinator.setVisibility(
-@@ -1123,32 +1060,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-      */
-     @EnsuresNonNull({"mHomeModulesContainer", "mHomeModulesCoordinator"})
-     private void initializeHomeModulesImpl() {
--        mHomeModulesContainer =
--                (ViewGroup)
--                        ((ViewStub)
--                                        mNewTabPageLayout.findViewById(
--                                                R.id.home_modules_recycler_view_stub))
--                                .inflate();
--        MonotonicObservableSupplier<Profile> profileSupplier =
--                ObservableSuppliers.createMonotonic(mProfile);
--        mHomeModulesCoordinator =
--                new HomeModulesCoordinator(
--                        mActivity,
--                        this,
--                        mNewTabPageLayout,
--                        HomeModulesConfigManager.getInstance(),
--                        profileSupplier,
--                        assumeNonNull(mModuleRegistrySupplier.get()));
--
--        if (SetupListManager.getInstance().isSetupListActive()) {
--            mSetupListObserver =
--                    () -> {
--                        if (mHomeModulesCoordinator != null) {
--                            mHomeModulesCoordinator.refreshModules();
--                        }
--                    };
--            SetupListManager.getInstance().addObserver(mSetupListObserver);
--        }
-+        // SKIPPED: Home modules removed from NTP
-     }
- 
-     @VisibleForTesting
-@@ -1172,6 +1084,22 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         }
-     }
- 
-+    /** Shows the NTP theme tip bottom sheet. */
-+    void triggerCustomizationBottomSheet() {
-+        mNtpCustomizationCoordinator =
-+                NtpCustomizationCoordinatorFactory.getInstance()
-+                        .create(
-+                                mActivity,
-+                                mBottomSheetController,
-+                                mTab::getProfile,
-+                                NtpCustomizationCoordinator.BottomSheetType.THEME_TIP,
-+                                mWindowAndroid,
-+                                mModuleRegistrySupplier.get());
-+        mNtpCustomizationCoordinator.showBottomSheet();
-+        NtpCustomizationUtils.setThemeTipBottomSheetShownTimestampToSharedPreference(
-+                TimeUtils.uptimeMillis());
-+    }
-+
-     // ModuleDelegateHost implementation
- 
-     @Override
-@@ -1239,6 +1167,11 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
- 
-     @SuppressWarnings("NullAway")
-     public void destroy() {
-+        if (mNtpCustomizationCoordinator != null) {
-+            mNtpCustomizationCoordinator.destroy();
-+            mNtpCustomizationCoordinator = null;
-+        }
-+
-         mMostRecentTabSupplier.set(null);
- 
-         if (mSearchBoxHintTextObserver != null) {
-@@ -1420,7 +1353,7 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         }
- 
-         // If composeplate view flags haven't been initialized yet, returns now.
--        if (mIsComposeplateEnabled == null) {
-+        if (mCanShowComposeplateButton == null) {
-             return;
-         }
- 
-@@ -1464,10 +1397,6 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-         return mHomeModulesCoordinator;
-     }
- 
--    public @Nullable NtpSearchBox getNtpSearchBoxForTesting() {
--        return mNtpSearchBox;
--    }
--
-     public PropertyModel getModelForTesting() {
-         return mModel;
-     }
-@@ -1475,4 +1404,8 @@ public class NewTabPageCoordinator implements ModuleDelegateHost {
-     public @Nullable ViewGroup getHomeModulesContainerForTesting() {
-         return mHomeModulesContainer;
-     }
-+
-+    public static void setCountForTesting(int count) {
-+        sCount = count;
-+    }
- }
