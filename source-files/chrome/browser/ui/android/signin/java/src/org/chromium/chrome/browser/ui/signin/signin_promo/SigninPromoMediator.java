@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.ui.signin.signin_promo;
 
 import androidx.annotation.StringDef;
 
-import org.chromium.base.Promise;
 import org.chromium.base.metrics.RecordHistogram;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -14,9 +13,11 @@ import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
 import org.chromium.chrome.browser.signin.services.DisplayableProfileData;
 import org.chromium.chrome.browser.signin.services.ProfileDataCache;
-import org.chromium.chrome.browser.signin.services.SigninManager;
 import org.chromium.chrome.browser.signin.services.SigninMetricsUtils;
 import org.chromium.chrome.browser.ui.signin.BottomSheetSigninAndHistorySyncConfig;
+import org.chromium.components.signin.AccountManagerFacade;
+import org.chromium.components.signin.AccountUtils;
+import org.chromium.components.signin.AccountsChangeObserver;
 import org.chromium.components.signin.SigninFeatureMap;
 import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.base.CoreAccountInfo;
@@ -28,12 +29,12 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.List;
 
 @NullMarked
 final class SigninPromoMediator
         implements IdentityManager.Observer,
                 SyncService.SyncStateChangedListener,
+                AccountsChangeObserver,
                 ProfileDataCache.Observer {
     private static final int MAX_TOTAL_PROMO_SHOW_COUNT = 100;
 
@@ -64,8 +65,8 @@ final class SigninPromoMediator
     }
 
     private final IdentityManager mIdentityManager;
-    private final SigninManager mSigninManager;
-    private final @Nullable SyncService mSyncService;
+    private final SyncService mSyncService;
+    private final AccountManagerFacade mAccountManagerFacade;
     private final ProfileDataCache mProfileDataCache;
     private final SigninPromoDelegate mPromoDelegate;
     private final Delegate mMediatorDelegate;
@@ -77,23 +78,25 @@ final class SigninPromoMediator
 
     SigninPromoMediator(
             IdentityManager identityManager,
-            SigninManager signinManager,
-            @Nullable SyncService syncService,
+            SyncService syncService,
+            AccountManagerFacade accountManagerFacade,
             ProfileDataCache profileDataCache,
             SigninPromoDelegate promoDelegate,
             Delegate mediatorDelegate) {
         mIdentityManager = identityManager;
-        mSigninManager = signinManager;
         mSyncService = syncService;
+        mAccountManagerFacade = accountManagerFacade;
         mProfileDataCache = profileDataCache;
         mPromoDelegate = promoDelegate;
         mMediatorDelegate = mediatorDelegate;
 
-        DisplayableProfileData visibleAccount = getVisibleAccount();
+        CoreAccountInfo visibleAccount = getVisibleAccount();
+        DisplayableProfileData profileData =
+                visibleAccount == null ? null : mProfileDataCache.getById(visibleAccount.getId());
 
         mModel =
                 SigninPromoProperties.createModel(
-                        /* profileData= */ visibleAccount,
+                        /* profileData= */ profileData,
                         /* onPrimaryButtonClicked= */ () -> {},
                         /* onSecondaryButtonClicked= */ () -> {},
                         /* onDismissButtonClicked= */ () -> {},
@@ -115,20 +118,16 @@ final class SigninPromoMediator
             updateModel(visibleAccount);
         }
 
-        if (mShouldShowPromo) {
-            mIdentityManager.addObserver(this);
-            if (mSyncService != null) {
-                mSyncService.addSyncStateChangedListener(this);
-            }
-            mProfileDataCache.addObserver(this);
-        }
+        mIdentityManager.addObserver(this);
+        mSyncService.addSyncStateChangedListener(this);
+        mAccountManagerFacade.addObserver(this);
+        mProfileDataCache.addObserver(this);
     }
 
     void destroy() {
         mProfileDataCache.removeObserver(this);
-        if (mSyncService != null) {
-            mSyncService.removeSyncStateChangedListener(this);
-        }
+        mAccountManagerFacade.removeObserver(this);
+        mSyncService.removeSyncStateChangedListener(this);
         mIdentityManager.removeObserver(this);
     }
 
@@ -177,18 +176,18 @@ final class SigninPromoMediator
         refreshPromoContent(/* wasVisibleAccountUpdated= */ false);
     }
 
-    /** Implements {@link ProfileDataCache.Observer} */
+    /** Implements {@link AccountsChangeObserver} */
     @Override
-    public void onAccountsUpdated(List<DisplayableProfileData> accounts) {
+    public void onCoreAccountInfosChanged() {
         refreshPromoContent(/* wasVisibleAccountUpdated= */ true);
     }
 
     /** Implements {@link ProfileDataCache.Observer}. */
     @Override
     public void onProfileDataUpdated(DisplayableProfileData profileData) {
-        @Nullable DisplayableProfileData visibleAccount = getVisibleAccount();
+        @Nullable CoreAccountInfo visibleAccount = getVisibleAccount();
         if (visibleAccount != null
-                && !visibleAccount.getAccountId().equals(profileData.getAccountId())) {
+                && !visibleAccount.getEmail().equals(profileData.getAccountEmail())) {
             return;
         }
         refreshPromoContent(/* wasVisibleAccountUpdated= */ true);
@@ -210,13 +209,13 @@ final class SigninPromoMediator
         return mModel;
     }
 
-    private void onPrimaryButtonClicked(@Nullable DisplayableProfileData profileData) {
+    private void onPrimaryButtonClicked(@Nullable CoreAccountInfo visibleAccount) {
         recordEventHistogram(Event.CONTINUED);
         if (mPromoDelegate.shouldOverridePrimaryButtonClick()) {
-            mPromoDelegate.onPrimaryButtonClicked(profileData);
+            mPromoDelegate.onPrimaryButtonClicked(visibleAccount);
         } else {
             mMediatorDelegate.startSigninFlow(
-                    mPromoDelegate.getConfigForPrimaryButtonClick(profileData));
+                    mPromoDelegate.getConfigForPrimaryButtonClick(visibleAccount));
         }
     }
 
@@ -246,14 +245,16 @@ final class SigninPromoMediator
         }
     }
 
-    private void updateModel(@Nullable DisplayableProfileData profileData) {
+    private void updateModel(@Nullable CoreAccountInfo visibleAccount) {
+        @Nullable DisplayableProfileData profileData =
+                visibleAccount == null ? null : mProfileDataCache.getById(visibleAccount.getId());
         mModel.set(SigninPromoProperties.PROFILE_DATA, profileData);
         mModel.set(
                 SigninPromoProperties.SHOULD_HIDE_SECONDARY_BUTTON,
                 profileData == null || mPromoDelegate.shouldHideSecondaryButton());
         mModel.set(
                 SigninPromoProperties.ON_PRIMARY_BUTTON_CLICKED,
-                (unusedView) -> onPrimaryButtonClicked(profileData));
+                (unusedView) -> onPrimaryButtonClicked(visibleAccount));
         mModel.set(
                 SigninPromoProperties.ON_SECONDARY_BUTTON_CLICKED,
                 (unusedView) -> onSecondaryButtonClicked());
@@ -295,7 +296,9 @@ final class SigninPromoMediator
                 || !mPromoDelegate.canShowPromo()) {
             return;
         }
-        DisplayableProfileData profileData = getVisibleAccount();
+        CoreAccountInfo visibleAccount = getVisibleAccount();
+        DisplayableProfileData profileData =
+                visibleAccount == null ? null : mProfileDataCache.getById(visibleAccount.getId());
         mModel.set(
                 SigninPromoProperties.SHOULD_SHOW_LOADING_STATE,
                 mPromoDelegate.shouldDisplayLoadingState());
@@ -323,21 +326,13 @@ final class SigninPromoMediator
      * account configured on the Android device. Returns null if there are no accounts on the
      * device.
      */
-    private @Nullable DisplayableProfileData getVisibleAccount() {
-        @Nullable CoreAccountInfo primaryAccount = mIdentityManager.getPrimaryAccountInfo();
-        if (primaryAccount != null) {
-            return mProfileDataCache.getById(primaryAccount.getId());
+    private @Nullable CoreAccountInfo getVisibleAccount() {
+        @Nullable CoreAccountInfo visibleAccount = mIdentityManager.getPrimaryAccountInfo();
+        if (visibleAccount == null) {
+            visibleAccount =
+                    AccountUtils.getDefaultAccountIfFulfilled(mAccountManagerFacade.getAccounts());
         }
-        // TODO(crbug.com/507370415): create a helper class similar to AccountUtils and move this
-        // logic there
-        Promise<List<DisplayableProfileData>> accountsPromise = mProfileDataCache.getAccounts();
-        if (accountsPromise.isFulfilled()) {
-            List<DisplayableProfileData> accounts = accountsPromise.getResult();
-            if (!accounts.isEmpty()) {
-                return accounts.get(0);
-            }
-        }
-        return null;
+        return visibleAccount;
     }
 
     private void recordEventHistogram(@Event String actionType) {
