@@ -19,8 +19,6 @@ class DistractionBlockedUIConfig
                            chrome::kChromeUIDistractionBlockedHost) {}
 };
 
-// The WebUI controller for chrome://distraction-blocked.
-// Displays a block screen when a distracting URL is intercepted.
 class DistractionBlockedUI : public content::WebUIController {
  public:
   explicit DistractionBlockedUI(content::WebUI* web_ui);

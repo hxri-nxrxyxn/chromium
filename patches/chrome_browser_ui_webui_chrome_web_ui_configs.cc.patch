@@ -1,0 +1,20 @@
+diff --git a/chrome/browser/ui/webui/chrome_web_ui_configs.cc b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+index 9daef52..3a20292 100644
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -27,6 +27,7 @@
+ #include "chrome/browser/ui/webui/crashes/crashes_ui.h"
+ #include "chrome/browser/ui/webui/data_sharing_internals/data_sharing_internals_ui.h"
+ #include "chrome/browser/ui/webui/device_log/device_log_ui.h"
++#include "chrome/browser/ui/webui/distraction_blocked/distraction_blocked_ui.h"
+ #include "chrome/browser/ui/webui/download_internals/download_internals_ui.h"
+ #include "chrome/browser/ui/webui/engagement/site_engagement_ui.h"
+ #include "chrome/browser/ui/webui/family_link_user_internals/family_link_user_internals_ui.h"
+@@ -264,6 +265,7 @@ void RegisterChromeWebUIConfigs() {
+   map.AddWebUIConfig(std::make_unique<ConstrainedWebDialogUIConfig>());
+   map.AddWebUIConfig(std::make_unique<CreditsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<DataSharingInternalsUIConfig>());
++  map.AddWebUIConfig(std::make_unique<DistractionBlockedUIConfig>());
+   map.AddWebUIConfig(std::make_unique<DownloadInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<FamilyLinkUserInternalsUIConfig>());
+   map.AddWebUIConfig(std::make_unique<FlagsUIConfig>());

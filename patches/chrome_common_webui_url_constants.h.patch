@@ -1,0 +1,12 @@
+diff --git a/chrome/common/webui_url_constants.h b/chrome/common/webui_url_constants.h
+index e128efe..69ce3aa 100644
+--- a/chrome/common/webui_url_constants.h
++++ b/chrome/common/webui_url_constants.h
+@@ -119,6 +119,7 @@ inline constexpr char kChromeUIDataSharingInternalsHost[] =
+     "data-sharing-internals";
+ inline constexpr char kChromeUIDefaultHost[] = "version";
+ inline constexpr char kChromeUIDelayedHangUIHost[] = "delayeduithreadhang";
++inline constexpr char kChromeUIDistractionBlockedHost[] = "distraction-blocked";
+ inline constexpr char kChromeUIDeviceLogHost[] = "device-log";
+ inline constexpr char kChromeUIDevToolsBlankPath[] = "blank";
+ inline constexpr char kChromeUIDevToolsBundledPath[] = "bundled";
